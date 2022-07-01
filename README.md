@@ -11,10 +11,10 @@ pip install -v --no-cache-dir -e .
 ```
 
 ## How to test
-`tests/main.cpp` is a simple demo to test `AsyncIO` class. To compile:
+`tests/test_asyncio.cpp` is a simple demo to test `AsyncIO` class. To compile:
 
 ```shell
-g++ tests/main.cpp csrc/aio.cpp -luring
+g++ tests/test_asyncio.cpp csrc/aio.cpp -luring
 ./a.out
 ```
 
