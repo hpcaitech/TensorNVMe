@@ -9,11 +9,7 @@
 #include <stdexcept>
 #include "aio.h"
 
-class Offloader
-{
-    int fd;
-    AsyncIO aio;
-
+class Offloader {
 public:
     Offloader(const char *filename, unsigned int n_entries) : aio(AsyncIO(n_entries))
     {
@@ -35,6 +31,14 @@ public:
         this->aio.read(this->fd, tensor.data_ptr(), tensor.storage().nbytes(), 0);
         this->aio.sync_read_events();
     }
+
+    ~Offloader() {
+        close(this->fd);
+    }
+private:
+    int fd;
+    AsyncIO aio;
+
 };
 
 void writet(const at::Tensor &tensor)
