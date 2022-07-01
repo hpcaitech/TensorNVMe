@@ -19,4 +19,5 @@ public:
     ~SpaceManager();
     ull alloc(ull bytes);
     void free(ull offset, ull bytes);
+    void print();
 };
