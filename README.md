@@ -29,6 +29,7 @@ x = torch.rand(2, 2)
 print(x)
 colo_nvme.write(x)
 x.zero_()
+print(x)
 colo_nvme.read(x)
 print(x)
 ```
