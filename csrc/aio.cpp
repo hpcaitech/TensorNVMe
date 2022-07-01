@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include "aio.h"
+#include <memory>
 
 AsyncIO::AsyncIO(unsigned int n_entries) : n_write_events(0), n_read_events(0), n_entries(n_entries)
 {
@@ -16,7 +17,7 @@ void AsyncIO::wait()
 {
     io_uring_cqe *cqe;
     io_uring_wait_cqe(&this->ring, &cqe);
-    IOData *data = static_cast<IOData *>(io_uring_cqe_get_data(cqe));
+    std::unique_ptr<IOData> data(static_cast<IOData *>(io_uring_cqe_get_data(cqe)));
     if (data->type == WRITE)
         this->n_write_events--;
     else if (data->type == READ)
@@ -24,7 +25,6 @@ void AsyncIO::wait()
     else
         throw std::runtime_error("Unknown IO event type");
     io_uring_cqe_seen(&this->ring, cqe);
-    delete data;
 }
 
 void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset)
