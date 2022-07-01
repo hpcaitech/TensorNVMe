@@ -17,11 +17,6 @@ struct IOData
 
 class AsyncIO
 {
-    unsigned int n_write_events, n_read_events;
-    unsigned int n_entries;
-    io_uring ring;
-    void wait();
-
 public:
     AsyncIO(unsigned int n_entries);
     ~AsyncIO();
@@ -32,4 +27,9 @@ public:
     void sync_write_events();
     void sync_read_events();
     void synchronize();
+private:
+    unsigned int n_write_events, n_read_events;
+    unsigned int n_entries;
+    io_uring ring;
+    void wait();
 };
