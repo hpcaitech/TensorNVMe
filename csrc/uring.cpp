@@ -1,23 +1,19 @@
 #include <stdexcept>
-#include "aio.h"
 #include <memory>
+#include "uring.h"
 
-IOData::IOData(IOType type) : type(type), callback(nullptr) {}
-
-IOData::IOData(IOType type, callback_t callback) : type(type), callback(callback) {}
-
-AsyncIO::AsyncIO(unsigned int n_entries) : n_write_events(0), n_read_events(0), n_entries(n_entries)
+UringAsyncIO::UringAsyncIO(unsigned int n_entries) : n_write_events(0), n_read_events(0), n_entries(n_entries)
 {
     io_uring_queue_init(n_entries, &this->ring, 0);
 }
 
-AsyncIO::~AsyncIO()
+UringAsyncIO::~UringAsyncIO()
 {
     synchronize();
     io_uring_queue_exit(&this->ring);
 }
 
-void AsyncIO::wait()
+void UringAsyncIO::wait()
 {
     io_uring_cqe *cqe;
     io_uring_wait_cqe(&this->ring, &cqe);
@@ -33,7 +29,7 @@ void AsyncIO::wait()
     io_uring_cqe_seen(&this->ring, cqe);
 }
 
-void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
+void UringAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
     IOData *data = new IOData(WRITE, callback);
@@ -45,7 +41,7 @@ void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long off
     this->n_write_events++;
 }
 
-void AsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
+void UringAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
     IOData *data = new IOData(READ, callback);
@@ -57,19 +53,19 @@ void AsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offs
     this->n_read_events++;
 }
 
-void AsyncIO::sync_write_events()
+void UringAsyncIO::sync_write_events()
 {
     while (this->n_write_events > 0)
         wait();
 }
 
-void AsyncIO::sync_read_events()
+void UringAsyncIO::sync_read_events()
 {
     while (this->n_read_events > 0)
         wait();
 }
 
-void AsyncIO::synchronize()
+void UringAsyncIO::synchronize()
 {
     while (this->n_write_events > 0 || this->n_read_events > 0)
         wait();

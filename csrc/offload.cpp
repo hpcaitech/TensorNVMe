@@ -9,15 +9,16 @@
 #include <unordered_map>
 #include <error.h>
 #include <pybind11/functional.h>
-#include "aio.h"
+#include "uring.h"
 #include "space_mgr.h"
 
 class Offloader
 {
 public:
-    Offloader(const std::string &filename, unsigned int n_entries) : filename(filename), aio(AsyncIO(n_entries)), space_mgr(SpaceManager(0))
+    Offloader(const std::string &filename, unsigned int n_entries) : filename(filename), space_mgr(SpaceManager(0))
     {
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        this->aio = new UringAsyncIO(n_entries);
     }
 
     void write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
@@ -27,7 +28,7 @@ public:
         ull bytes = tensor.storage().nbytes();
         ull offset = this->space_mgr.alloc(bytes);
         this->tensors_info[key] = SpaceInfo(offset, bytes);
-        this->aio.write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+        this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
     }
 
     void read(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
@@ -40,28 +41,28 @@ public:
         if (bytes != this->tensors_info[key].second)
             throw std::runtime_error("Read error, tensor shape mismatch");
         auto fn = std::bind(&Offloader::release, this, key, this->tensors_info[key].first, bytes, callback);
-        this->aio.read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
+        this->aio->read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
     }
 
     void sync_write_events()
     {
-        this->aio.sync_write_events();
+        this->aio->sync_write_events();
     }
 
     void sync_read_events()
     {
-        this->aio.sync_read_events();
+        this->aio->sync_read_events();
     }
 
     void synchronize()
     {
-        this->aio.synchronize();
+        this->aio->synchronize();
     }
 
     ~Offloader()
     {
         errno = 0;
-        synchronize();
+        delete this->aio;
         close(this->fd);
         if (remove(this->filename.c_str()) != 0)
             printf("Remove \"%s\" error(%d): %s\n", this->filename.c_str(), errno, strerror(errno));
@@ -70,7 +71,7 @@ public:
 private:
     const std::string filename;
     int fd;
-    AsyncIO aio;
+    AsyncIO *aio;
     SpaceManager space_mgr;
     std::unordered_map<std::string, SpaceInfo> tensors_info;
 
