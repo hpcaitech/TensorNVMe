@@ -15,10 +15,13 @@
 class Offloader
 {
 public:
-    Offloader(const std::string &filename, unsigned int n_entries) : filename(filename), space_mgr(SpaceManager(0))
+    Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend = "uring") : filename(filename), space_mgr(SpaceManager(0))
     {
+        if (backend == "uring")
+            this->aio = new UringAsyncIO(n_entries);
+        else
+            throw std::runtime_error("Unknown backend");
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        this->aio = new UringAsyncIO(n_entries);
     }
 
     void write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
@@ -86,10 +89,10 @@ private:
 
 PYBIND11_MODULE(colo_nvme, m)
 {
-    pybind11::class_<Offloader>(m, "Offloader")
-        .def(pybind11::init<const std::string &, unsigned int>())
-        .def("write", &Offloader::write, pybind11::arg("tensor"), pybind11::arg("key"), pybind11::arg("callback") = pybind11::none())
-        .def("read", &Offloader::read, pybind11::arg("tensor"), pybind11::arg("key"), pybind11::arg("callback") = pybind11::none())
+    py::class_<Offloader>(m, "Offloader")
+        .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")
+        .def("write", &Offloader::write, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
+        .def("read", &Offloader::read, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
         .def("sync_write_events", &Offloader::sync_write_events)
         .def("sync_read_events", &Offloader::sync_write_events)
         .def("synchronize", &Offloader::synchronize);

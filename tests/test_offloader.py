@@ -29,6 +29,15 @@ def test_callback():
     assert torch.equal(x, x_copy)
 
 
+def test_backend():
+    try:
+        of = Offloader('test.pth', 4, backend='none')
+        assert False
+    except RuntimeError:
+        pass
+
+
 if __name__ == '__main__':
     test_eq()
     test_callback()
+    test_backend()
