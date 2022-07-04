@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <ATen/ATen.h>
 #include <torch/extension.h>
-#include <torch/csrc/utils/pybind.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -9,6 +8,7 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <error.h>
+#include <pybind11/functional.h>
 #include "aio.h"
 #include "space_mgr.h"
 
@@ -20,17 +20,17 @@ public:
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     }
 
-    void write(const at::Tensor &tensor, const std::string &key)
+    void write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
     {
         if (!tensor.is_contiguous() || !tensor.is_cpu())
             throw std::runtime_error("Tensor must be contiguous and on cpu");
         ull bytes = tensor.storage().nbytes();
         ull offset = this->space_mgr.alloc(bytes);
         this->tensors_info[key] = SpaceInfo(offset, bytes);
-        this->aio.write(this->fd, tensor.data_ptr(), bytes, offset, nullptr);
+        this->aio.write(this->fd, tensor.data_ptr(), bytes, offset, callback);
     }
 
-    void read(const at::Tensor &tensor, const std::string &key)
+    void read(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
     {
         if (!tensor.is_contiguous() || !tensor.is_cpu())
             throw std::runtime_error("Tensor must be contiguous and on cpu");
@@ -39,7 +39,7 @@ public:
         ull bytes = tensor.storage().nbytes();
         if (bytes != this->tensors_info[key].second)
             throw std::runtime_error("Read error, tensor shape mismatch");
-        auto fn = std::bind(&Offloader::release, this, std::ref(key), this->tensors_info[key].first, bytes);
+        auto fn = std::bind(&Offloader::release, this, key, this->tensors_info[key].first, bytes, callback);
         this->aio.read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
     }
 
@@ -74,10 +74,12 @@ private:
     SpaceManager space_mgr;
     std::unordered_map<std::string, SpaceInfo> tensors_info;
 
-    void release(const std::string &key, ull offset, ull bytes)
+    void release(std::string key, ull offset, ull bytes, callback_t callback = nullptr)
     {
         this->space_mgr.free(offset, bytes);
         this->tensors_info.erase(key);
+        if (callback != nullptr)
+            callback();
     }
 };
 
@@ -85,8 +87,8 @@ PYBIND11_MODULE(colo_nvme, m)
 {
     pybind11::class_<Offloader>(m, "Offloader")
         .def(pybind11::init<const std::string &, unsigned int>())
-        .def("write", &Offloader::write)
-        .def("read", &Offloader::read)
+        .def("write", &Offloader::write, pybind11::arg("tensor"), pybind11::arg("key"), pybind11::arg("callback") = pybind11::none())
+        .def("read", &Offloader::read, pybind11::arg("tensor"), pybind11::arg("key"), pybind11::arg("callback") = pybind11::none())
         .def("sync_write_events", &Offloader::sync_write_events)
         .def("sync_read_events", &Offloader::sync_write_events)
         .def("synchronize", &Offloader::synchronize);
