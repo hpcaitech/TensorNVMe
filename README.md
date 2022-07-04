@@ -24,13 +24,16 @@ Currently, we can save and load Pytorch Tensor:
 
 ```python
 import torch
-import colo_nvme
+from colo_nvme import Offloader
 x = torch.rand(2, 2)
 print(x)
-colo_nvme.write(x)
+of = Offloader('test.pth', 4)
+of.write(x, str(id(x)))
+of.synchronize()
 x.zero_()
 print(x)
-colo_nvme.read(x)
+of.read(x, str(id(x)))
+of.synchronize()
 print(x)
 ```
 
