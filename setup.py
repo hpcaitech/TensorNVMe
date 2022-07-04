@@ -3,7 +3,7 @@ from torch.utils.cpp_extension import CppExtension, BuildExtension
 
 setup(
     name='colo_nvme',
-    ext_modules=[CppExtension('colo_nvme', ['csrc/offload.cpp', 'csrc/aio.cpp'],
+    ext_modules=[CppExtension('colo_nvme', ['csrc/offload.cpp', 'csrc/aio.cpp', 'csrc/space_mgr.cpp'],
                               include_dirs=['csrc'],
                               extra_compile_args=['-luring'],
                               libraries=['uring'])],

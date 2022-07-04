@@ -7,63 +7,87 @@
 #include <fcntl.h>
 #include <string>
 #include <stdexcept>
+#include <unordered_map>
+#include <error.h>
 #include "aio.h"
+#include "space_mgr.h"
 
-class Offloader {
+class Offloader
+{
 public:
-    Offloader(const char *filename, unsigned int n_entries) : aio(AsyncIO(n_entries))
+    Offloader(const std::string &filename, unsigned int n_entries) : filename(filename), aio(AsyncIO(n_entries)), space_mgr(SpaceManager(0))
     {
-        this->fd = open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     }
 
-    void write(const at::Tensor &tensor)
+    void write(const at::Tensor &tensor, const std::string &key)
     {
         if (!tensor.is_contiguous() || !tensor.is_cpu())
             throw std::runtime_error("Tensor must be contiguous and on cpu");
-        this->aio.write(this->fd, tensor.data_ptr(), tensor.storage().nbytes(), 0);
+        ull bytes = tensor.storage().nbytes();
+        ull offset = this->space_mgr.alloc(bytes);
+        this->tensors_info[key] = SpaceInfo(offset, bytes);
+        this->aio.write(this->fd, tensor.data_ptr(), bytes, offset, nullptr);
+    }
+
+    void read(const at::Tensor &tensor, const std::string &key)
+    {
+        if (!tensor.is_contiguous() || !tensor.is_cpu())
+            throw std::runtime_error("Tensor must be contiguous and on cpu");
+        if (this->tensors_info.find(key) == this->tensors_info.end())
+            throw std::runtime_error("Read error, tensor not found");
+        ull bytes = tensor.storage().nbytes();
+        if (bytes != this->tensors_info[key].second)
+            throw std::runtime_error("Read error, tensor shape mismatch");
+        auto fn = std::bind(&Offloader::release, this, std::ref(key), this->tensors_info[key].first, bytes);
+        this->aio.read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
+    }
+
+    void sync_write_events()
+    {
         this->aio.sync_write_events();
     }
 
-    void read(const at::Tensor &tensor)
+    void sync_read_events()
     {
-        if (!tensor.is_contiguous() || !tensor.is_cpu())
-            throw std::runtime_error("Tensor must be contiguous and on cpu");
-        this->aio.read(this->fd, tensor.data_ptr(), tensor.storage().nbytes(), 0);
         this->aio.sync_read_events();
     }
 
-    ~Offloader() {
-        close(this->fd);
+    void synchronize()
+    {
+        this->aio.synchronize();
     }
+
+    ~Offloader()
+    {
+        errno = 0;
+        synchronize();
+        close(this->fd);
+        if (remove(this->filename.c_str()) != 0)
+            printf("Remove \"%s\" error(%d): %s\n", this->filename.c_str(), errno, strerror(errno));
+    }
+
 private:
+    const std::string filename;
     int fd;
     AsyncIO aio;
+    SpaceManager space_mgr;
+    std::unordered_map<std::string, SpaceInfo> tensors_info;
 
+    void release(const std::string &key, ull offset, ull bytes)
+    {
+        this->space_mgr.free(offset, bytes);
+        this->tensors_info.erase(key);
+    }
 };
-
-void writet(const at::Tensor &tensor)
-{
-    if (!tensor.is_contiguous() || !tensor.is_cpu())
-        throw std::runtime_error("Tensor must be contiguous and on cpu");
-    AsyncIO aio(2);
-    int fd = open("t.pth", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    aio.write(fd, tensor.data_ptr(), tensor.storage().nbytes(), 0);
-    aio.sync_write_events();
-    close(fd);
-}
-void readt(const at::Tensor &tensor)
-{
-    if (!tensor.is_contiguous() || !tensor.is_cpu())
-        throw std::runtime_error("Tensor must be contiguous and on cpu");
-    AsyncIO aio(2);
-    int fd = open("t.pth", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    aio.read(fd, tensor.data_ptr(), tensor.storage().nbytes(), 0);
-    aio.sync_read_events();
-    close(fd);
-}
 
 PYBIND11_MODULE(colo_nvme, m)
 {
-    m.def("read", &readt, "read");
-    m.def("write", &writet, "write");
+    pybind11::class_<Offloader>(m, "Offloader")
+        .def(pybind11::init<const std::string &, unsigned int>())
+        .def("write", &Offloader::write)
+        .def("read", &Offloader::read)
+        .def("sync_write_events", &Offloader::sync_write_events)
+        .def("sync_read_events", &Offloader::sync_write_events)
+        .def("synchronize", &Offloader::synchronize);
 }
