@@ -2,6 +2,10 @@
 #include "aio.h"
 #include <memory>
 
+IOData::IOData(IOType type) : type(type), callback(nullptr) {}
+
+IOData::IOData(IOType type, callback_t callback) : type(type), callback(callback) {}
+
 AsyncIO::AsyncIO(unsigned int n_entries) : n_write_events(0), n_read_events(0), n_entries(n_entries)
 {
     io_uring_queue_init(n_entries, &this->ring, 0);
@@ -24,14 +28,15 @@ void AsyncIO::wait()
         this->n_read_events--;
     else
         throw std::runtime_error("Unknown IO event type");
+    if (data->callback != nullptr)
+        data->callback();
     io_uring_cqe_seen(&this->ring, cqe);
 }
 
-void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset)
+void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
-    IOData *data = new IOData();
-    data->type = WRITE;
+    IOData *data = new IOData(WRITE, callback);
     data->iov.iov_base = buffer;
     data->iov.iov_len = n_bytes;
     io_uring_prep_writev(sqe, fd, &data->iov, 1, offset);
@@ -40,11 +45,10 @@ void AsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long off
     this->n_write_events++;
 }
 
-void AsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset)
+void AsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
-    IOData *data = new IOData();
-    data->type = READ;
+    IOData *data = new IOData(READ, callback);
     data->iov.iov_base = buffer;
     data->iov.iov_len = n_bytes;
     io_uring_prep_readv(sqe, fd, &data->iov, 1, offset);
@@ -70,4 +74,3 @@ void AsyncIO::synchronize()
     while (this->n_write_events > 0 || this->n_read_events > 0)
         wait();
 }
-
