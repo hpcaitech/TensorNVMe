@@ -2,8 +2,8 @@
 #include <string.h>
 #include <functional>
 #include <unistd.h>
-#include "../csrc/uring.h"
-#include "../csrc/aio.h"
+#include "uring.h"
+#include "aio.h"
 
 int n = 0;
 
