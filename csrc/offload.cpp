@@ -87,7 +87,7 @@ private:
     }
 };
 
-PYBIND11_MODULE(colo_nvme, m)
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     py::class_<Offloader>(m, "Offloader")
         .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")

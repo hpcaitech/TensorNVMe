@@ -1,11 +1,16 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CppExtension, BuildExtension
 
 setup(
     name='colo_nvme',
-    ext_modules=[CppExtension('colo_nvme', ['csrc/offload.cpp', 'csrc/uring.cpp', 'csrc/space_mgr.cpp'],
+    packages=find_packages(exclude=(
+        'csrc',
+        'tests',
+        '*.egg-info'
+    )),
+    ext_modules=[CppExtension('colo_nvme._C', ['csrc/offload.cpp', 'csrc/uring.cpp', 'csrc/space_mgr.cpp'],
                               include_dirs=['csrc'],
                               extra_compile_args=['-luring'],
                               libraries=['uring'])],
-    # cmdclass={'build_ext': BuildExtension}
+    cmdclass={'build_ext': BuildExtension}
 )
