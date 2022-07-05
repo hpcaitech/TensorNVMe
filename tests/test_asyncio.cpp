@@ -3,6 +3,7 @@
 #include <functional>
 #include <unistd.h>
 #include "../csrc/uring.h"
+#include "../csrc/aio.h"
 
 int n = 0;
 
@@ -14,6 +15,7 @@ void callback_n(int &x)
 int main()
 {
     AsyncIO *aio = new UringAsyncIO(2);
+//    AsyncIO *aio = new AIOAsyncIO(2);
     int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     char *text = "TEST ME AGAIN!!!\n";
     size_t len = strlen(text);

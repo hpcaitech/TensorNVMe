@@ -10,6 +10,7 @@
 #include <error.h>
 #include <pybind11/functional.h>
 #include "uring.h"
+#include "aio.h"
 #include "space_mgr.h"
 
 class Offloader
@@ -19,6 +20,8 @@ public:
     {
         if (backend == "uring")
             this->aio = new UringAsyncIO(n_entries);
+        else if (backend == "aio")
+            this->aio = new AIOAsyncIO(n_entries);
         else
             throw std::runtime_error("Unknown backend");
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
