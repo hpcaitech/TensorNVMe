@@ -43,7 +43,8 @@ public:
         ull bytes = tensor.storage().nbytes();
         if (bytes != this->tensors_info[key].second)
             throw std::runtime_error("Read error, tensor shape mismatch");
-        auto fn = std::bind(&Offloader::release, this, key, this->tensors_info[key].first, bytes, callback);
+        this->tensors_info.erase(key);
+        auto fn = std::bind(&Offloader::release, this, this->tensors_info[key].first, bytes, callback);
         this->aio->read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
     }
 
@@ -78,10 +79,9 @@ private:
     SpaceManager space_mgr;
     std::unordered_map<std::string, SpaceInfo> tensors_info;
 
-    void release(std::string key, ull offset, ull bytes, callback_t callback = nullptr)
+    void release(ull offset, ull bytes, callback_t callback = nullptr)
     {
         this->space_mgr.free(offset, bytes);
-        this->tensors_info.erase(key);
         if (callback != nullptr)
             callback();
     }
