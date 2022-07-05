@@ -10,6 +10,7 @@ def cpp_ext_helper(name, sources, **kwargs):
         name,
         [os.path.join(this_dir, path) for path in sources],
         include_dirs=[os.path.join(this_dir, 'csrc'), os.path.join(this_dir, 'csrc/include')],
+        **kwargs
     )
 
 

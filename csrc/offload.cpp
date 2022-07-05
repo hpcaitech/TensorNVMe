@@ -25,6 +25,7 @@ public:
         else
             throw std::runtime_error("Unknown backend");
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        this->aio->register_file(fd);
     }
 
     SpaceInfo prepare_write(const at::Tensor &tensor, const std::string &key)

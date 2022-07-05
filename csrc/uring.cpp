@@ -7,6 +7,11 @@ UringAsyncIO::UringAsyncIO(unsigned int n_entries) : n_write_events(0), n_read_e
     io_uring_queue_init(n_entries, &this->ring, 0);
 }
 
+void UringAsyncIO::register_file(int fd)
+{
+    io_uring_register_files(&ring, &fd, 1);
+}
+
 UringAsyncIO::~UringAsyncIO()
 {
     synchronize();

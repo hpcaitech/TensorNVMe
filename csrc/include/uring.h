@@ -22,4 +22,6 @@ public:
     void sync_write_events();
     void sync_read_events();
     void synchronize();
+
+    void register_file(int fd);
 };

@@ -32,4 +32,6 @@ public:
     virtual void sync_write_events() = 0;
     virtual void sync_read_events() = 0;
     virtual void synchronize() = 0;
+
+    virtual void register_file(int fd) = 0;
 };

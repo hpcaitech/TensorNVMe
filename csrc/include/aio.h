@@ -1,6 +1,6 @@
 #pragma once
 
-#include<libaio.h>
+#include <libaio.h>
 #include "asyncio.h"
 
 class AIOAsyncIO : public AsyncIO
@@ -11,7 +11,9 @@ private:
     int n_read_events = 0;
     int max_nr = 10;
     int min_nr = 1;
-    struct timespec timeout{};
+    struct timespec timeout
+    {
+    };
 
     void wait();
 
@@ -25,4 +27,6 @@ public:
     void sync_write_events();
     void sync_read_events();
     void synchronize();
+
+    void register_file(int fd);
 };
