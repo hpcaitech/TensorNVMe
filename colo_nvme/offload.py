@@ -17,14 +17,24 @@ class DiskOffloader(Offloader):
             filename = os.path.join(dir_name, f'offload-{uuid.uuid4().hex}')
         super().__init__(filename, n_entries, backend)
 
-    def write(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
+    def async_write(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
         assert tensor.storage().size() > 0
-        super().write(tensor, str(id(tensor)), partial(DiskOffloader._write_callback, tensor, callback))
+        super().async_write(tensor, str(id(tensor)), partial(DiskOffloader._write_callback, tensor, callback))
 
-    def read(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
+    def async_read(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
         if tensor.storage().size() == 0:
             tensor.storage().resize_(tensor.numel())
-        super().read(tensor, str(id(tensor)), callback)
+        super().async_read(tensor, str(id(tensor)), callback)
+
+    def sync_write(self, tensor: torch.Tensor) -> None:
+        assert tensor.storage().size() > 0
+        super().sync_write(tensor, str(id(tensor)))
+        self._write_callback(tensor)
+
+    def sync_read(self, tensor: torch.Tensor) -> None:
+        if tensor.storage().size() == 0:
+            tensor.storage().resize_(tensor.numel())
+        super().sync_read(tensor, str(id(tensor)))
 
     @staticmethod
     def _write_callback(tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
