@@ -23,32 +23,28 @@ def run_cpu_step(params: List[torch.Tensor], ml: List[torch.Tensor], vl: List[to
 def run_nvme_sync(params: List[torch.Tensor], ml: List[torch.Tensor], vl: List[torch.Tensor], of: DiskOffloader):
     start = time()
     for p, m, v in zip(params, ml, vl):
-        of.read(m)
-        of.sync_read_events()
-        of.read(v)
-        of.sync_read_events()
+        of.sync_read(m)
+        of.sync_read(v)
         adam(p, p.grad, m, v)
-        of.write(m)
-        of.sync_write_events()
-        of.write(v)
-        of.sync_write_events()
+        of.sync_write(m)
+        of.sync_write(v)
     return time() - start
 
 
 def run_nvme_async(params: List[torch.Tensor], ml: List[torch.Tensor], vl: List[torch.Tensor], of: DiskOffloader):
     start = time()
-    of.read(ml[0])
-    of.read(vl[0])
+    of.async_read(ml[0])
+    of.async_read(vl[0])
 
     for i, (p, m, v) in enumerate(zip(params, ml, vl)):
         of.sync_read_events()
         if i + 1 < len(params):
-            of.read(ml[i + 1])
-            of.read(vl[i + 1])
+            of.async_read(ml[i + 1])
+            of.async_read(vl[i + 1])
         adam(p, p.grad, m, v)
         of.sync_write_events()
-        of.write(m)
-        of.write(v)
+        of.async_write(m)
+        of.async_write(v)
 
     of.synchronize()
     return time() - start
@@ -80,8 +76,8 @@ if __name__ == '__main__':
         cpu_time = timeit(partial(run_cpu_step, params, momentums, variances), N_WARMUP, N_RUN)
         print(f'CPU={cpu_time:.3f}')
         for m, v in zip(momentums, variances):
-            of.write(m)
-            of.write(v)
+            of.async_write(m)
+            of.async_write(v)
         of.synchronize()
         nvme_sync_time = timeit(partial(run_nvme_sync, params, momentums, variances, of), N_WARMUP, N_RUN)
         print(f'NVME Sync={nvme_sync_time:.3f}')

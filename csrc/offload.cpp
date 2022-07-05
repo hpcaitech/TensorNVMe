@@ -27,28 +27,61 @@ public:
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     }
 
-    void write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
+    SpaceInfo prepare_write(const at::Tensor &tensor, const std::string &key)
     {
         if (!tensor.is_contiguous() || !tensor.is_cpu())
             throw std::runtime_error("Tensor must be contiguous and on cpu");
         ull bytes = tensor.storage().nbytes();
         ull offset = this->space_mgr.alloc(bytes);
-        this->tensors_info[key] = SpaceInfo(offset, bytes);
-        this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+        SpaceInfo space_info = SpaceInfo(offset, bytes);
+        this->tensors_info[key] = space_info;
+        return space_info;
     }
 
-    void read(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
+    SpaceInfo prepare_read(const at::Tensor &tensor, const std::string &key)
     {
         if (!tensor.is_contiguous() || !tensor.is_cpu())
             throw std::runtime_error("Tensor must be contiguous and on cpu");
         if (this->tensors_info.find(key) == this->tensors_info.end())
             throw std::runtime_error("Read error, tensor not found");
         ull bytes = tensor.storage().nbytes();
-        if (bytes != this->tensors_info[key].second)
+        SpaceInfo space_info = this->tensors_info[key];
+        if (bytes != space_info.second)
             throw std::runtime_error("Read error, tensor shape mismatch");
         this->tensors_info.erase(key);
-        auto fn = std::bind(&Offloader::release, this, this->tensors_info[key].first, bytes, callback);
-        this->aio->read(this->fd, tensor.data_ptr(), bytes, this->tensors_info[key].first, fn);
+        return space_info;
+    }
+
+    void async_write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_write(tensor, key);
+        this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+    }
+
+    void async_read(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_read(tensor, key);
+        auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
+        this->aio->read(this->fd, tensor.data_ptr(), bytes, offset, fn);
+    }
+
+    void sync_write(const at::Tensor &tensor, const std::string &key)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_write(tensor, key);
+        lseek(this->fd, offset, SEEK_SET);
+        write(this->fd, tensor.data_ptr(), bytes);
+    }
+
+    void sync_read(const at::Tensor &tensor, const std::string &key)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_read(tensor, key);
+        lseek(this->fd, offset, SEEK_SET);
+        read(this->fd, tensor.data_ptr(), bytes);
+        release(offset, bytes);
     }
 
     void sync_write_events()
@@ -94,8 +127,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     py::class_<Offloader>(m, "Offloader")
         .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")
-        .def("write", &Offloader::write, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
-        .def("read", &Offloader::read, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
+        .def("async_write", &Offloader::async_write, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
+        .def("async_read", &Offloader::async_read, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
+        .def("sync_write", &Offloader::sync_write, py::arg("tensor"), py::arg("key"))
+        .def("sync_read", &Offloader::sync_read, py::arg("tensor"), py::arg("key"))
         .def("sync_write_events", &Offloader::sync_write_events)
         .def("sync_read_events", &Offloader::sync_write_events)
         .def("synchronize", &Offloader::synchronize);
