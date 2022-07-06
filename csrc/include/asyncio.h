@@ -13,7 +13,6 @@ enum IOType
 
 struct IOData
 {
-    iovec iov;
     IOType type;
     callback_t callback;
 

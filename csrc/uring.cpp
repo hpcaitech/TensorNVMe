@@ -38,9 +38,7 @@ void UringAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long lon
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
     IOData *data = new IOData(WRITE, callback);
-    data->iov.iov_base = buffer;
-    data->iov.iov_len = n_bytes;
-    io_uring_prep_writev(sqe, fd, &data->iov, 1, offset);
+    io_uring_prep_write(sqe, fd, buffer, n_bytes, offset);
     io_uring_sqe_set_data(sqe, data);
     io_uring_submit(&this->ring);
     this->n_write_events++;
@@ -50,9 +48,7 @@ void UringAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long
 {
     io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
     IOData *data = new IOData(READ, callback);
-    data->iov.iov_base = buffer;
-    data->iov.iov_len = n_bytes;
-    io_uring_prep_readv(sqe, fd, &data->iov, 1, offset);
+    io_uring_prep_read(sqe, fd, buffer, n_bytes, offset);
     io_uring_sqe_set_data(sqe, data);
     io_uring_submit(&this->ring);
     this->n_read_events++;
