@@ -65,7 +65,10 @@ void SpaceManager::free(ull offset, ull bytes)
             iter++;
         }
     }
-    avail_spaces.push_back(new_avail_space);
+    if (offset + bytes == used_bytes)
+        used_bytes = used_bytes - bytes;
+    else
+        avail_spaces.push_back(new_avail_space);
 }
 
 void SpaceManager::print()
