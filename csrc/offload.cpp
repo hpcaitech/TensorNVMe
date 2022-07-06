@@ -13,6 +13,17 @@
 #include "aio.h"
 #include "space_mgr.h"
 
+iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
+{
+    iovec *iovs = static_cast<iovec *>(calloc(tensors.size(), sizeof(iovec)));
+    for (size_t i = 0; i < tensors.size(); i++)
+    {
+        iovs[i].iov_base = tensors[i].data_ptr();
+        iovs[i].iov_len = tensors[i].storage().nbytes();
+    }
+    return iovs;
+}
+
 class Offloader
 {
 public:
@@ -34,7 +45,7 @@ public:
             throw std::runtime_error("Tensor must be contiguous and on cpu");
         ull bytes = tensor.storage().nbytes();
         ull offset = this->space_mgr.alloc(bytes);
-        SpaceInfo space_info = SpaceInfo(offset, bytes);
+        SpaceInfo space_info(offset, bytes);
         this->tensors_info[key] = space_info;
         return space_info;
     }
@@ -109,6 +120,77 @@ public:
             printf("Remove \"%s\" error(%d): %s\n", this->filename.c_str(), errno, strerror(errno));
     }
 
+    SpaceInfo prepare_writev(const std::vector<at::Tensor> &tensors, const std::string &key)
+    {
+        ull total_bytes = 0;
+        for (const at::Tensor &tensor : tensors)
+        {
+            if (!tensor.is_contiguous() || !tensor.is_cpu())
+                throw std::runtime_error("Tensor must be contiguous and on cpu");
+            total_bytes += tensor.storage().nbytes();
+        }
+        ull offset = this->space_mgr.alloc(total_bytes);
+        SpaceInfo space_info(offset, total_bytes);
+        this->tensors_info[key] = space_info;
+        return space_info;
+    }
+
+    SpaceInfo prepare_readv(const std::vector<at::Tensor> &tensors, const std::string &key)
+    {
+        ull total_bytes = 0;
+        for (const at::Tensor &tensor : tensors)
+        {
+            if (!tensor.is_contiguous() || !tensor.is_cpu())
+                throw std::runtime_error("Tensor must be contiguous and on cpu");
+            total_bytes += tensor.storage().nbytes();
+        }
+        if (this->tensors_info.find(key) == this->tensors_info.end())
+            throw std::runtime_error("Read error, tensor not found");
+        SpaceInfo space_info = this->tensors_info[key];
+        if (total_bytes != space_info.second)
+            throw std::runtime_error("Read error, tensor shape mismatch");
+        this->tensors_info.erase(key);
+        return space_info;
+    }
+
+    void async_writev(const std::vector<at::Tensor> &tensors, const std::string &key, callback_t callback = nullptr)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_writev(tensors, key);
+        iovec *iov = tensors_to_iovec(tensors);
+        this->aio->writev(this->fd, iov, tensors.size(), offset, callback);
+    }
+
+    void async_readv(const std::vector<at::Tensor> &tensors, const std::string &key, callback_t callback = nullptr)
+    {
+
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_readv(tensors, key);
+        iovec *iov = tensors_to_iovec(tensors);
+        auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
+        this->aio->readv(this->fd, iov, tensors.size(), offset, fn);
+    }
+
+    void sync_writev(const std::vector<at::Tensor> &tensors, const std::string &key)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_writev(tensors, key);
+        iovec *iov = tensors_to_iovec(tensors);
+        lseek(this->fd, offset, SEEK_SET);
+        writev(this->fd, iov, tensors.size());
+        delete iov;
+    }
+
+    void sync_readv(const std::vector<at::Tensor> &tensors, const std::string &key)
+    {
+        ull offset, bytes;
+        std::tie(offset, bytes) = prepare_readv(tensors, key);
+        iovec *iov = tensors_to_iovec(tensors);
+        lseek(this->fd, offset, SEEK_SET);
+        readv(this->fd, iov, tensors.size());
+        delete iov;
+    }
+
 private:
     const std::string filename;
     int fd;
@@ -134,5 +216,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def("sync_read", &Offloader::sync_read, py::arg("tensor"), py::arg("key"))
         .def("sync_write_events", &Offloader::sync_write_events)
         .def("sync_read_events", &Offloader::sync_write_events)
-        .def("synchronize", &Offloader::synchronize);
+        .def("synchronize", &Offloader::synchronize)
+        .def("async_writev", &Offloader::async_writev, py::arg("tensors"), py::arg("key"), py::arg("callback") = py::none())
+        .def("async_readv", &Offloader::async_readv, py::arg("tensors"), py::arg("key"), py::arg("callback") = py::none())
+        .def("sync_writev", &Offloader::sync_writev, py::arg("tensors"), py::arg("key"))
+        .def("sync_readv", &Offloader::sync_readv, py::arg("tensors"), py::arg("key"));
 }
