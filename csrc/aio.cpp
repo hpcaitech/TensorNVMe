@@ -66,7 +66,7 @@ void AIOAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long o
     struct iocb *iocbs = &iocb;
     auto *data = new IOData(READ, callback);
 
-    io_prep_pwrite(&iocb, fd, buffer, n_bytes, (long long)offset);
+    io_prep_pread(&iocb, fd, buffer, n_bytes, (long long)offset);
 
     iocb.data = data;
     io_submit(this->io_ctx, 1, &iocbs); /* 提交这个I/O不会堵塞 */
@@ -90,4 +90,36 @@ void AIOAsyncIO::synchronize()
 {
     while (this->n_write_events > 0 || this->n_read_events > 0)
         wait();
+}
+
+void AIOAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)
+{
+    struct iocb iocb
+    {
+    }; //建立一个异步I/O需求
+    struct iocb *iocbs = &iocb;
+    auto *data = new IOData(WRITE, callback, iov);
+
+    io_prep_pwritev(&iocb, fd, iov, iovcnt, (long long)offset); // 初始化这个异步I/O需求 counter为偏移量
+
+    iocb.data = data;
+    io_submit(this->io_ctx, 1, &iocbs); // 提交这个I/O不会堵塞
+
+    this->n_write_events++;
+}
+
+void AIOAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)
+{
+    struct iocb iocb
+    {
+    }; //建立一个异步I/O需求
+    struct iocb *iocbs = &iocb;
+    auto *data = new IOData(READ, callback, iov);
+
+    io_prep_preadv(&iocb, fd, iov, iovcnt, (long long)offset);
+
+    iocb.data = data;
+    io_submit(this->io_ctx, 1, &iocbs); /* 提交这个I/O不会堵塞 */
+
+    this->n_read_events++;
 }

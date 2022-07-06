@@ -71,3 +71,23 @@ void UringAsyncIO::synchronize()
     while (this->n_write_events > 0 || this->n_read_events > 0)
         wait();
 }
+
+void UringAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)
+{
+    io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
+    IOData *data = new IOData(WRITE, callback, iov);
+    io_uring_prep_writev(sqe, fd, iov, iovcnt, offset);
+    io_uring_sqe_set_data(sqe, data);
+    io_uring_submit(&this->ring);
+    this->n_write_events++;
+}
+
+void UringAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)
+{
+    io_uring_sqe *sqe = io_uring_get_sqe(&this->ring);
+    IOData *data = new IOData(READ, callback, iov);
+    io_uring_prep_readv(sqe, fd, iov, iovcnt, offset);
+    io_uring_sqe_set_data(sqe, data);
+    io_uring_submit(&this->ring);
+    this->n_read_events++;
+}

@@ -15,9 +15,14 @@ struct IOData
 {
     IOType type;
     callback_t callback;
+    const iovec *iov;
 
-    IOData(IOType type) : type(type), callback(nullptr) {}
-    IOData(IOType type, callback_t callback) : type(type), callback(callback) {}
+    IOData(IOType type, callback_t callback = nullptr, const iovec *iov = nullptr) : type(type), callback(callback), iov(iov) {}
+    ~IOData()
+    {
+        if (iov)
+            delete iov;
+    }
 };
 
 class AsyncIO
@@ -27,6 +32,8 @@ public:
 
     virtual void write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) = 0;
     virtual void read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) = 0;
+    virtual void writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) = 0;
+    virtual void readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) = 0;
 
     virtual void sync_write_events() = 0;
     virtual void sync_read_events() = 0;
