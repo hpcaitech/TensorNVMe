@@ -138,10 +138,10 @@ if __name__ == '__main__':
     model = gpt2_small().cpu()
     with torch.no_grad():
         # CPU
-        # run_adam(model, False, 'uring', 0, False)
-        # run_adam(model, True, 'uring', 0, False)
-        # run_adam(model, True, 'uring', 0, True)
+        run_adam(model, False, 'uring', 0, False)
+        run_adam(model, True, 'uring', 0, False)
+        run_adam(model, True, 'uring', 0, True)
         run_adam(model, True, 'uring', 1, False)
-        # run_adam(model, True, 'uring', 1, True)
-        # run_adam(model, True, 'uring', 2, False)
-        # run_adam(model, True, 'uring', 2, True)
+        run_adam(model, True, 'uring', 1, True)
+        run_adam(model, True, 'uring', 2, False)
+        run_adam(model, True, 'uring', 2, True)
