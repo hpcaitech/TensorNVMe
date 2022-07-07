@@ -2,7 +2,6 @@ import os
 import torch
 import uuid
 from typing import Callable, Optional, List
-from functools import partial
 from colo_nvme._C import Offloader
 
 
@@ -44,7 +43,7 @@ class DiskOffloader(Offloader):
     def async_writev(self, tensors: List[torch.Tensor], callback: Optional[Callable[[], None]] = None) -> None:
         for tensor in tensors:
             assert tensor.storage().size() > 0
-        key = hash(frozenset(tensors))
+        key = str(hash(tuple(tensors)))
 
         def callback_fn():
             for tensor in tensors:
@@ -57,13 +56,13 @@ class DiskOffloader(Offloader):
         for tensor in tensors:
             if tensor.storage().size() == 0:
                 tensor.storage().resize_(tensor.numel())
-        key = hash(frozenset(tensors))
+        key = str(hash(tuple(tensors)))
         super().async_readv(tensors, key, callback)
 
     def sync_writev(self, tensors: List[torch.Tensor]) -> None:
         for tensor in tensors:
             assert tensor.storage().size() > 0
-        key = hash(frozenset(tensors))
+        key = str(hash(tuple(tensors)))
         super().sync_writev(tensors, key)
         for tensor in tensors:
             tensor.storage().resize_(0)
@@ -72,5 +71,5 @@ class DiskOffloader(Offloader):
         for tensor in tensors:
             if tensor.storage().size() == 0:
                 tensor.storage().resize_(tensor.numel())
-        key = hash(frozenset(tensors))
+        key = str(hash(tuple(tensors)))
         super().sync_readv(tensors, key)
