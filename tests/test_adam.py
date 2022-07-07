@@ -3,8 +3,7 @@ import math
 from colo_nvme import DiskOffloader
 from titans.model.gpt import gpt2_small
 from time import time
-from typing import List, Optional
-from functools import partial
+from typing import Optional
 
 N_WARMUP = 5
 N_ACTIVATE = 10
@@ -80,14 +79,14 @@ class Adam(torch.optim.Optimizer):
         if self.prefetch > 0:
             if idx % self.prefetch == 0:
                 self.offloader.sync_read_events()
-            if idx + 1 < len(params):
-                for prefetch_p in params[idx + 1:idx + 1 + self.prefetch]:
-                    prefetch_state = self.state[prefetch_p]
-                    if self.vecio:
-                        self.offloader.async_readv([prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
-                    else:
-                        self.offloader.async_read(prefetch_state['exp_avg'])
-                        self.offloader.async_read(prefetch_state['exp_avg_sq'])
+                if idx + self.prefetch < len(params):
+                    for prefetch_p in params[idx + self.prefetch:idx + self.prefetch * 2]:
+                        prefetch_state = self.state[prefetch_p]
+                        if self.vecio:
+                            self.offloader.async_readv([prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
+                        else:
+                            self.offloader.async_read(prefetch_state['exp_avg'])
+                            self.offloader.async_read(prefetch_state['exp_avg_sq'])
         else:
             state = self.state[params[idx]]
             if self.vecio:
@@ -139,8 +138,10 @@ if __name__ == '__main__':
     model = gpt2_small().cpu()
     with torch.no_grad():
         # CPU
-        run_adam(model, False, 'uring', 0, False)
-        run_adam(model, True, 'uring', 0, False)
-        run_adam(model, True, 'uring', 0, True)
+        # run_adam(model, False, 'uring', 0, False)
+        # run_adam(model, True, 'uring', 0, False)
+        # run_adam(model, True, 'uring', 0, True)
         run_adam(model, True, 'uring', 1, False)
-        run_adam(model, True, 'uring', 1, True)
+        # run_adam(model, True, 'uring', 1, True)
+        # run_adam(model, True, 'uring', 2, False)
+        # run_adam(model, True, 'uring', 2, True)
