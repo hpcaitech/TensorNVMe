@@ -3,22 +3,33 @@
 > This is a demo.
 
 ## Dependencies
+
 - [liburing](https://github.com/axboe/liburing)
+- [libaio](https://pagure.io/libaio)
+- [libtorch](https://github.com/pytorch/pytorch)
 
 ## Install
+
 ```shell
 pip install -v --no-cache-dir -e .
 ```
 
 ## How to test
-`tests/test_asyncio.cpp` is a simple demo to test `AsyncIO` class. To compile:
+
+We have C++ test scrpits for `AsyncIO` and `SpaceManager` class. To run the tests:
 
 ```shell
-g++ tests/test_asyncio.cpp csrc/aio.cpp -luring
-./a.out
+export CMAKE_TORCH_PATH=/path/to/libtorch
+export CMAKE_URING_PATH=/path/to/liburing
+export CMAKE_AIO_PATH=/path/to/libaio
+export CMAKE_PYTHON_PATH=/path/to/python
+mkdir build
+cd build
+cmake ..
+make
+./test_asyncio
+./test_space_mgr
 ```
-
-You will get a `test.txt` which is filled with `"TEST ME AGAIN!!!"`.
 
 Currently, we can save and load Pytorch Tensor:
 
