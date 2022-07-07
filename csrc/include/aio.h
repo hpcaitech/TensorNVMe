@@ -23,6 +23,8 @@ public:
 
     void write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback);
     void read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback);
+    void writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback);
+    void readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback);
 
     void sync_write_events();
     void sync_read_events();
