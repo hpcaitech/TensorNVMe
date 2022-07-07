@@ -22,6 +22,7 @@ We have C++ test scrpits for `AsyncIO` and `SpaceManager` class. To run the test
 export CMAKE_TORCH_PATH=/path/to/libtorch
 export CMAKE_URING_PATH=/path/to/liburing
 export CMAKE_AIO_PATH=/path/to/libaio
+export CMAKE_PYTHON_PATH=/path/to/python
 mkdir build
 cd build
 cmake ..
