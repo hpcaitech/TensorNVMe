@@ -19,7 +19,7 @@ void callback_empty()
 {
 }
 
-TEST_CASE( "Test async io fucntion of libaio") {
+TEST_CASE( "Test async io fucntion of libaio and liburing") {
     AsyncIO *aios[] = {
             new AIOAsyncIO(1),
             new AIOAsyncIO(10),
