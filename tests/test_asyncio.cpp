@@ -10,13 +10,9 @@
 #include "uring.h"
 using namespace std;
 
-void callback_n_print(int &x)
-{
-    printf("Do %d\n", x++);
-}
-
 void callback_n(int &x)
 {
+    x++;
 }
 
 void callback_empty()
@@ -45,10 +41,11 @@ TEST_CASE( "Test async io fucntion of libaio") {
             size_t len = strlen(text[0]) + 1;
             int n = 0;
             for (int i = 0; i < 5; i++) {
-                auto fn = std::bind(callback_n_print, std::ref(n));
+                auto fn = std::bind(callback_n, std::ref(n));
                 aio->write(fd, text[i], len, i * len, fn);
             }
             aio->sync_write_events();
+            REQUIRE(n == 5);
 
             char new_text[5][18];
             read(fd, new_text, 5 * 18 * sizeof(char));
@@ -71,10 +68,11 @@ TEST_CASE( "Test async io fucntion of libaio") {
             size_t len = strlen(text[0]) + 1;
             int n = 0;
             for (int i = 0; i < 5; i++) {
-                auto fn = std::bind(callback_n_print, std::ref(n));
+                auto fn = std::bind(callback_n, std::ref(n));
                 aio->read(fd, new_text[i], len, i * len, fn);
             }
             aio->sync_read_events();
+            REQUIRE(n == 5);
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 18; j++) {
                     REQUIRE(text[i][j] == new_text[i][j]);
@@ -171,6 +169,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_write_events();
+            REQUIRE(n == n_loop);
 
             char new_text[n_loop][n_len];
             n = 0, offset = 0;
@@ -181,6 +180,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_read_events();
+            REQUIRE(n == n_loop);
             for (int i = 0; i < n_loop; i++) {
                 for (int j = 0; j < n_len; j++) {
                     REQUIRE(text[i][j] == new_text[i][j]);
@@ -378,6 +378,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_write_events();
+            REQUIRE(n == n_loop);
 
             double data2[n_loop][n_len];
             n = 0, offset = 0;
@@ -388,6 +389,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_read_events();
+            REQUIRE(n == n_loop);
 
             for (int i = 0; i < n_loop; i++) {
                 for (int j = 0; j < n_len; j++) {
@@ -501,6 +503,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_write_events();
+            REQUIRE(n == n_loop);
 
             double data2[n_loop][n_len];
             n = 0, offset = 0;
@@ -511,6 +514,7 @@ TEST_CASE( "Test async io fucntion of libaio") {
                 offset += len;
             }
             aio->sync_read_events();
+            REQUIRE(n == n_loop);
 
             for (int i = 0; i < n_loop; i++) {
                 for (int j = 0; j < n_len; j++) {
