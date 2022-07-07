@@ -5,7 +5,7 @@
 ## Dependencies
 
 - [liburing](https://github.com/axboe/liburing)
-- [libaio](https://pagure.io/libaiohttps://pagure.io/libaiohttps://pagure.io/libaio)
+- [libaio](https://pagure.io/libaio)
 - [libtorch](https://github.com/pytorch/pytorch)
 
 ## Install
