@@ -1,7 +1,7 @@
 import os
 import torch
 import uuid
-from typing import Callable, Optional
+from typing import Callable, Optional, List
 from functools import partial
 from colo_nvme._C import Offloader
 
@@ -19,7 +19,12 @@ class DiskOffloader(Offloader):
 
     def async_write(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
         assert tensor.storage().size() > 0
-        super().async_write(tensor, str(id(tensor)), partial(DiskOffloader._write_callback, tensor, callback))
+
+        def callback_fn():
+            tensor.storage().resize_(0)
+            if callback is not None:
+                callback()
+        super().async_write(tensor, str(id(tensor)), callback_fn)
 
     def async_read(self, tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
         if tensor.storage().size() == 0:
@@ -29,15 +34,43 @@ class DiskOffloader(Offloader):
     def sync_write(self, tensor: torch.Tensor) -> None:
         assert tensor.storage().size() > 0
         super().sync_write(tensor, str(id(tensor)))
-        self._write_callback(tensor)
+        tensor.storage().resize_(0)
 
     def sync_read(self, tensor: torch.Tensor) -> None:
         if tensor.storage().size() == 0:
             tensor.storage().resize_(tensor.numel())
         super().sync_read(tensor, str(id(tensor)))
 
-    @staticmethod
-    def _write_callback(tensor: torch.Tensor, callback: Optional[Callable[[], None]] = None) -> None:
-        tensor.storage().resize_(0)
-        if callback is not None:
-            callback()
+    def async_writev(self, tensors: List[torch.Tensor], callback: Optional[Callable[[], None]] = None) -> None:
+        for tensor in tensors:
+            assert tensor.storage().size() > 0
+        key = hash(frozenset(tensors))
+
+        def callback_fn():
+            for tensor in tensors:
+                tensor.storage().resize_(0)
+            if callback is not None:
+                callback()
+        super().async_writev(tensors, key, callback_fn)
+
+    def async_readv(self, tensors: List[torch.Tensor], callback: Optional[Callable[[], None]] = None) -> None:
+        for tensor in tensors:
+            if tensor.storage().size() == 0:
+                tensor.storage().resize_(tensor.numel())
+        key = hash(frozenset(tensors))
+        super().async_readv(tensors, key, callback)
+
+    def sync_writev(self, tensors: List[torch.Tensor]) -> None:
+        for tensor in tensors:
+            assert tensor.storage().size() > 0
+        key = hash(frozenset(tensors))
+        super().sync_writev(tensors, key)
+        for tensor in tensors:
+            tensor.storage().resize_(0)
+
+    def sync_readv(self, tensors: List[torch.Tensor]) -> None:
+        for tensor in tensors:
+            if tensor.storage().size() == 0:
+                tensor.storage().resize_(tensor.numel())
+        key = hash(frozenset(tensors))
+        super().sync_readv(tensors, key)
