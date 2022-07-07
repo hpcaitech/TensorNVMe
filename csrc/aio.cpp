@@ -2,10 +2,10 @@
 #include <memory>
 #include "aio.h"
 
-AIOAsyncIO::AIOAsyncIO(int max_events)
+AIOAsyncIO::AIOAsyncIO(unsigned int n_entries)
 {
     // printf("Initializing the io Context\n");
-    io_setup(max_events, &(this->io_ctx)); /* 初始化ioctx*/
+    io_setup(n_entries, &(this->io_ctx)); /* 初始化ioctx*/
     this->timeout.tv_sec = 0;
     this->timeout.tv_nsec = 100000000;
 }

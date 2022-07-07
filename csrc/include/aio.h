@@ -18,7 +18,7 @@ private:
     void wait();
 
 public:
-    AIOAsyncIO(int max_events);
+    AIOAsyncIO(unsigned int n_entries);
     ~AIOAsyncIO();
 
     void write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback);
