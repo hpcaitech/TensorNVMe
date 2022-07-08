@@ -7,11 +7,16 @@
 #include <string>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <error.h>
 #include <pybind11/functional.h>
-#include "uring.h"
-#include "aio.h"
 #include "space_mgr.h"
+#ifndef DISABLE_URING
+#include "uring.h"
+#endif
+#ifndef DISABLE_AIO
+#include "aio.h"
+#endif
 
 iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 {
@@ -24,17 +29,42 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
     return iovs;
 }
 
+std::unordered_set<std::string> get_backends()
+{
+    std::unordered_set<std::string> backends;
+#ifndef DISABLE_URING
+    backends.insert("uring");
+#endif
+#ifndef DISABLE_AIO
+    backends.insert("aio");
+#endif
+    return backends;
+}
+
+AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
+{
+    std::unordered_set<std::string> backends = get_backends();
+    if (backends.empty())
+        throw std::runtime_error("No asyncio backend is installed");
+    if (backends.find(backend) == backends.end())
+        throw std::runtime_error("Unsupported backend: " + backend);
+#ifndef DISABLE_URING
+    if (backend == "uring")
+        return new UringAsyncIO(n_entries);
+#endif
+#ifndef DISABLE_AIO
+    if (backend == "aio")
+        return new AIOAsyncIO(n_entries);
+#endif
+    throw std::runtime_error("Unsupported backend: " + backend);
+}
+
 class Offloader
 {
 public:
     Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend = "uring") : filename(filename), space_mgr(SpaceManager(0))
     {
-        if (backend == "uring")
-            this->aio = new UringAsyncIO(n_entries);
-        else if (backend == "aio")
-            this->aio = new AIOAsyncIO(n_entries);
-        else
-            throw std::runtime_error("Unknown backend");
+        this->aio = create_asyncio(n_entries, backend);
         this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
         this->aio->register_file(fd);
     }
@@ -221,4 +251,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def("async_readv", &Offloader::async_readv, py::arg("tensors"), py::arg("key"), py::arg("callback") = py::none())
         .def("sync_writev", &Offloader::sync_writev, py::arg("tensors"), py::arg("key"))
         .def("sync_readv", &Offloader::sync_readv, py::arg("tensors"), py::arg("key"));
+    m.def("get_backends", get_backends);
 }
