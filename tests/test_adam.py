@@ -3,12 +3,12 @@ import math
 import torch.nn as nn
 from colo_nvme import DiskOffloader
 from transformers import GPT2Config, GPT2LMHeadModel
-from time import time
 from typing import Optional
+from tqdm import tqdm
 
 
-N_WARMUP = 5
-N_ACTIVATE = 10
+N_WARMUP = 2
+N_ACTIVATE = 3
 
 
 class GPTLMModel(nn.Module):
@@ -31,6 +31,14 @@ def gpt2_medium(checkpoint=False):
 
 def gpt2_xl(checkpoint=False):
     return GPTLMModel(hidden_size=1600, num_layers=48, num_attention_heads=16, checkpoint=checkpoint)
+
+
+def gpt2_8b(checkpoint=False):
+    return GPTLMModel(hidden_size=4096, num_layers=90, num_attention_heads=16, checkpoint=checkpoint)
+
+
+def gpt2_20b(checkpoint=False):
+    return GPTLMModel(hidden_size=8192, num_layers=25, num_attention_heads=16, checkpoint=checkpoint)
 
 
 def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps=1e-12):
@@ -142,20 +150,20 @@ class Adam(torch.optim.Optimizer):
 def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch: int, vecio: bool):
     offloader = None
     if nvme_offload:
-        offloader = DiskOffloader('.', backend=backend)
+        offloader = DiskOffloader('.', 8, backend=backend)
     optimizer = Adam(model.parameters(), 1e-3, offloader=offloader, prefetch=prefetch, vecio=vecio)
     for p in model.parameters():
         p.grad = torch.rand_like(p)
     for _ in range(N_WARMUP):
         optimizer.step()
-    start = time()
-    for _ in range(N_ACTIVATE):
-        optimizer.step()
-    dur = time() - start
     if not nvme_offload:
-        print(f'CPU: time={dur/N_ACTIVATE:.3f}')
+        desc = 'CPU'
+        postfix = None
     else:
-        print(f'NVME offload: backend={backend}, prefetch={prefetch}, vecio={vecio}, time={dur/N_ACTIVATE:.3f}')
+        desc = 'NVME'
+        postfix = {'backend': backend, 'prefetch': prefetch, 'vecio': vecio}
+    for _ in tqdm(range(N_ACTIVATE), desc=desc, postfix=postfix):
+        optimizer.step()
 
 
 if __name__ == '__main__':

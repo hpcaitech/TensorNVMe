@@ -6,7 +6,7 @@ from colo_nvme._C import Offloader
 
 
 class DiskOffloader(Offloader):
-    def __init__(self, dir_name: str, n_entries: int = 128, backend: str = 'uring') -> None:
+    def __init__(self, dir_name: str, n_entries: int = 16, backend: str = 'uring') -> None:
         assert backend in ('uring', 'aio')
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
