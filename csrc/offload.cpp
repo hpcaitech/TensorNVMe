@@ -41,6 +41,15 @@ std::unordered_set<std::string> get_backends()
     return backends;
 }
 
+bool probe_backend(const std::string &backend)
+{
+    std::unordered_set<std::string> backends = get_backends();
+    if (backends.find(backend) == backends.end())
+        return false;
+    // TODO: do probe for backend
+    return true;
+}
+
 AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
 {
     std::unordered_set<std::string> backends = get_backends();
@@ -48,6 +57,8 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
         throw std::runtime_error("No asyncio backend is installed");
     if (backends.find(backend) == backends.end())
         throw std::runtime_error("Unsupported backend: " + backend);
+    if (!probe_backend(backend))
+        throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
 #ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
@@ -252,4 +263,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def("sync_writev", &Offloader::sync_writev, py::arg("tensors"), py::arg("key"))
         .def("sync_readv", &Offloader::sync_readv, py::arg("tensors"), py::arg("key"));
     m.def("get_backends", get_backends);
+    m.def("probe_backend", probe_backend, py::arg("backend"));
 }
