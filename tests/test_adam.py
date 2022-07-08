@@ -1,12 +1,36 @@
 import torch
 import math
+import torch.nn as nn
 from colo_nvme import DiskOffloader
-from titans.model.gpt import gpt2_small
+from transformers import GPT2Config, GPT2LMHeadModel
 from time import time
 from typing import Optional
 
+
 N_WARMUP = 5
 N_ACTIVATE = 10
+
+
+class GPTLMModel(nn.Module):
+    def __init__(self, hidden_size=768, num_layers=12, num_attention_heads=12, max_seq_len=1024, vocab_size=50257, checkpoint=False):
+        super().__init__()
+        self.checkpoint = checkpoint
+        self.model = GPT2LMHeadModel(GPT2Config(n_embd=hidden_size, n_layer=num_layers,
+                                     n_head=num_attention_heads, n_positions=max_seq_len, n_ctx=max_seq_len, vocab_size=vocab_size))
+        if checkpoint:
+            self.model.gradient_checkpointing_enable()
+
+    def forward(self, input_ids, attention_mask):
+        # Only return lm_logits
+        return self.model(input_ids=input_ids, attention_mask=attention_mask, use_cache=not self.checkpoint)[0]
+
+
+def gpt2_medium(checkpoint=False):
+    return GPTLMModel(hidden_size=1024, num_layers=24, num_attention_heads=16, checkpoint=checkpoint)
+
+
+def gpt2_xl(checkpoint=False):
+    return GPTLMModel(hidden_size=1600, num_layers=48, num_attention_heads=16, checkpoint=checkpoint)
 
 
 def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps=1e-12):
@@ -135,7 +159,7 @@ def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch:
 
 
 if __name__ == '__main__':
-    model = gpt2_small().cpu()
+    model = gpt2_xl()
     with torch.no_grad():
         # CPU
         run_adam(model, False, 'uring', 0, False)
