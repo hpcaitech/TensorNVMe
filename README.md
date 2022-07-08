@@ -6,9 +6,41 @@
 
 - [liburing](https://github.com/axboe/liburing)
 - [libaio](https://pagure.io/libaio)
-- [libtorch](https://github.com/pytorch/pytorch)
 
 ## Install
+
+You must install `liburing` and `libaio` first. You can install them through your package manager or from source code. We will introduce you how to install them from source code.
+
+### Install liburing
+```shell
+git clone https://github.com/axboe/liburing.git
+cd liburing
+# If you have sudo privilege
+./configure && make && sudo make install
+# If you don't have sudo privilege
+./configure --prefix=~/.local && make && make install
+# "~/.local" can be replaced with any path
+```
+
+### Install libaio
+```shell
+git clone https://pagure.io/libaio.git
+cd libaio
+# If you have sudo privilege
+sudo make prefix=/usr install
+# If you don't have sudo privilege
+make prefix=~/.local install
+```
+
+If you install `liburing` or `libaio` without `sudo`, you must set environment variables correctly. Here is an example code snippet in `~/.bashrc`:
+```shell
+export LIBRARY_PATH=$HOME/.local/lib:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
+export C_INCLUDE_PATH=$HOME/.local/include:$C_INCLUDE_PATH
+export CPLUS_INCLUDE_PATH=$HOME/.local/include:$CPLUS_INCLUDE_PATH
+```
+
+### Install colo_nvme
 
 ```shell
 pip install -v --no-cache-dir -e .
@@ -16,13 +48,9 @@ pip install -v --no-cache-dir -e .
 
 ## How to test
 
-We have C++ test scrpits for `AsyncIO` and `SpaceManager` class. To run the tests:
+We have C++ test scrpits for `AsyncIO` and `SpaceManager` class. Make sure you have installed `liburing` and `libaio`, and set environment variables correctly before testing. To run the tests:
 
 ```shell
-export CMAKE_TORCH_PATH=/path/to/libtorch
-export CMAKE_URING_PATH=/path/to/liburing
-export CMAKE_AIO_PATH=/path/to/libaio
-export CMAKE_PYTHON_PATH=/path/to/python
 mkdir build
 cd build
 cmake ..
@@ -31,21 +59,8 @@ make
 ./test_space_mgr
 ```
 
-Currently, we can save and load Pytorch Tensor:
+We also have python unit tests. Make sure you have installed `pytest`. To run:
 
-```python
-import torch
-from colo_nvme import Offloader
-x = torch.rand(2, 2)
-print(x)
-of = Offloader('test.pth', 4)
-of.write(x, str(id(x)))
-of.synchronize()
-x.zero_()
-print(x)
-of.read(x, str(id(x)))
-of.synchronize()
-print(x)
+```shell
+pytest ./tests
 ```
-
-A `t.pth` will be generated to save the tensor.
