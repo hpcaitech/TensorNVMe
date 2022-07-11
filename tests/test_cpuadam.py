@@ -57,10 +57,6 @@ class NVMECPUAdam(CPUAdam):
             self._init_step(group['params'])
             for p_i, p in enumerate(group['params']):
 
-                if p.grad is None and p.requires_grad:
-                    print('No grad!')
-                    continue
-
                 state = self.state[p]
                 target_device = p.device
                 state['step'] += 1
