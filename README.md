@@ -42,8 +42,19 @@ export CPLUS_INCLUDE_PATH=$HOME/.local/include:$CPLUS_INCLUDE_PATH
 
 ### Install colo_nvme
 
+To install `colo_nvme` with `liburing` and `libaio`:
 ```shell
 pip install -v --no-cache-dir -e .
+```
+
+To install `colo_nvme` with only `liburing`:
+```shell
+DISABLE_AIO=1 pip install -v --no-cache-dir -e .
+```
+
+To install `colo_nvme` with only `libaio`:
+```shell
+DISABLE_URING=1 pip install -v --no-cache-dir -e .
 ```
 
 ## How to test
