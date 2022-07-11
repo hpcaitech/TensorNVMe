@@ -21,8 +21,8 @@ ExternalProject_Add(extern_aio
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaio
     CONFIGURE_COMMAND ""
     UPDATE_COMMAND ""
-    INSTALL_COMMAND make prefix=${CMAKE_CURRENT_BINARY_DIR}/libaio install
-    BUILD_COMMAND ""
+    BUILD_COMMAND make prefix=${CMAKE_CURRENT_BINARY_DIR}/libaio install
+    INSTALL_COMMAND ""
 )
 
 add_library(aio STATIC IMPORTED GLOBAL)
