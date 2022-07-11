@@ -21,14 +21,14 @@ AIOAsyncIO::~AIOAsyncIO()
 
 void AIOAsyncIO::wait()
 {
-    auto *events = new io_event[this->max_nr]; /* pending I/O max support */
+    std::unique_ptr<io_event> events(new io_event[this->max_nr]);
     int num_events;
 
-    num_events = io_getevents(io_ctx, this->min_nr, this->max_nr, events, &(this->timeout)); /* 获得异步I/O event个数 */
+    num_events = io_getevents(io_ctx, this->min_nr, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
 
     for (int i = 0; i < num_events; i++) /* 开始获取每一个event并且做相应处理 */
     {
-        struct io_event event = events[i];
+        struct io_event event = events.get()[i];
         std::unique_ptr<IOData> data(static_cast<IOData *>(event.data));
         if (data->type == WRITE)
             this->n_write_events--;
