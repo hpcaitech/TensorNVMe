@@ -1,6 +1,7 @@
 include(ExternalProject)
 ExternalProject_Add(extern_uring
     GIT_REPOSITORY https://github.com/axboe/liburing.git
+    GIT_TAG liburing-2.2
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/liburing
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/liburing
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/liburing
@@ -16,6 +17,7 @@ add_dependencies(uring extern_uring)
 
 ExternalProject_Add(extern_aio
     GIT_REPOSITORY https://pagure.io/libaio.git
+    GIT_TAG libaio-0.3.113
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaio
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaio
     INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaio
