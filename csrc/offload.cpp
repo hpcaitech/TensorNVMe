@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <ATen/ATen.h>
+#include <torch/extension.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -242,7 +243,7 @@ void Offloader::release(ull offset, ull bytes, callback_t callback)
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(Offloader, m)
+PYBIND11_MODULE(off_load, m)
 {
     py::class_<Offloader>(m, "Offloader")
         .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")

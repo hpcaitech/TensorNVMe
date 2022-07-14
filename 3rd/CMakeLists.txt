@@ -27,8 +27,8 @@ ExternalProject_Add(extern_aio
     INSTALL_COMMAND ""
 )
 
-add_library(aio STATIC IMPORTED GLOBAL ../include/offload.h)
-SET_PROPERTY(TARGET aio PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libaio/lib/libaio.a)
+add_library(aio SHARED IMPORTED GLOBAL)
+SET_PROPERTY(TARGET aio PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libaio/src/libaio.so.1.0.2)
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libaio/include/)
 target_include_directories(aio INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/libaio/include/)
 add_dependencies(aio extern_aio)

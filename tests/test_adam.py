@@ -167,7 +167,7 @@ def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch:
 
 
 if __name__ == '__main__':
-    model = gpt2_xl()
+    model = GPTLMModel()
     with torch.no_grad():
         # CPU
         run_adam(model, False, 'uring', 0, False)

@@ -71,6 +71,7 @@ import platform
 import subprocess
 import pathlib
 
+# from torch.utils.cpp_extension import CppExtension, BuildExtension
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from distutils.version import LooseVersion
@@ -117,19 +118,19 @@ class CMakeBuild(build_ext):
         ]
 
         os.chdir(build_temp)
-        self.spawn(["cmake", f"{str(cwd)}/{ext.name}"] + cmake_args)
+        self.spawn(["cmake", f"{str(extdir.parent.absolute())}"] + cmake_args)
         if not self.dry_run:
             self.spawn(["cmake", "--build", "."] + build_args)
         os.chdir(str(cwd))
 
 setup(
     name='colo_nvme',
-    version='0.0.1',
+    version='1.0.1',
     author='xxx',
     author_email='xxx',
     description='xxx',
     long_description='',
-    ext_modules=[CMakeExtension('.')],
+    ext_modules=[CMakeExtension('colo_nvme')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )
