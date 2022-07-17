@@ -3,12 +3,12 @@ import torch
 import uuid
 from typing import Callable, Optional, List
 # from colo_nvme._C import Offloader, get_backends
-import off_load
+from off_load import Offloader, get_backends
 
 
-class DiskOffloader(off_load.Offloader):
+class DiskOffloader(Offloader):
     def __init__(self, dir_name: str, n_entries: int = 16, backend: str = 'uring') -> None:
-        # assert backend in get_backends(), f'Unsupported backend: {backend}, please install colo_nvme with this backend'
+        assert backend in get_backends(), f'Unsupported backend: {backend}, please install colo_nvme with this backend'
         if not os.path.exists(dir_name):
             os.mkdir(dir_name)
         assert os.path.isdir(dir_name)

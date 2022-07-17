@@ -2,7 +2,6 @@
 #include <ATen/ATen.h>
 #include <torch/extension.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <fcntl.h>
 #include <string>
 #include <stdexcept>
@@ -10,15 +9,18 @@
 #include <unordered_set>
 #include <error.h>
 #include <pybind11/functional.h>
-#include "offload.h"
 #include <pybind11/pybind11.h>
+#include "offload.h"
 #include "space_mgr.h"
-#ifndef DISABLE_URING
+
+//TODO
+//#ifndef DISABLE_URING
 #include "uring.h"
-#endif
-#ifndef DISABLE_AIO
+//#endif
+//#ifndef DISABLE_AIO
 #include "aio.h"
-#endif
+//#endif
+
 
 iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 {
@@ -34,13 +36,62 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 std::unordered_set<std::string> get_backends()
 {
     std::unordered_set<std::string> backends;
-#ifndef DISABLE_URING
+    //TODO
+    //#ifndef DISABLE_URING
     backends.insert("uring");
-#endif
-#ifndef DISABLE_AIO
+    //#endif
+    //#ifndef DISABLE_AIO
     backends.insert("aio");
-#endif
+    //#endif
     return backends;
+}
+
+void probe_asyncio(const std::string &backend)
+{
+    int fd = open("./test", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    AsyncIO *aio;
+    try {
+        if (backend == "uring")
+            aio = new UringAsyncIO(2);
+        else
+            aio = new AIOAsyncIO(2);
+
+        const int n_loop = 5, n_len = 18;
+
+        char text[n_loop][n_len];
+
+        int offset = 0;
+        size_t len;
+        for (int i = 0; i < n_loop; i++) {
+            len = n_len;
+            aio->write(fd, text[i], len, offset, nullptr);
+            offset += len;
+        }
+        aio->sync_write_events();
+
+        char new_text[n_loop][n_len];
+        offset = 0;
+        for (int i = 0; i < n_loop; i++) {
+            len = n_len;
+            aio->read(fd, new_text[i], len, offset, nullptr);
+            offset += len;
+        }
+        aio->sync_read_events();
+        for (int i = 0; i < n_loop; i++) {
+            for (int j = 0; j < n_len; j++) {
+                assert(text[i][j] == new_text[i][j]);
+            }
+        }
+        close(fd);
+        delete aio;
+        remove("./test");
+    }
+    catch(...){
+        close(fd);
+        delete aio;
+        remove("./test");
+        throw std::runtime_error("uring probe failed\n");
+    }
 }
 
 bool probe_backend(const std::string &backend)
@@ -48,7 +99,10 @@ bool probe_backend(const std::string &backend)
     std::unordered_set<std::string> backends = get_backends();
     if (backends.find(backend) == backends.end())
         return false;
-    // TODO: do probe for backend
+    if (backend == "uring")
+        probe_asyncio("uring");
+    if (backend == "aio")
+        probe_asyncio("aio");
     return true;
 }
 
@@ -61,14 +115,15 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
         throw std::runtime_error("Unsupported backend: " + backend);
     if (!probe_backend(backend))
         throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
-#ifndef DISABLE_URING
+    //TODO
+    //#ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
-#endif
-#ifndef DISABLE_AIO
+    //#endif
+    //#ifndef DISABLE_AIO
     if (backend == "aio")
         return new AIOAsyncIO(n_entries);
-#endif
+    //#endif
     throw std::runtime_error("Unsupported backend: " + backend);
 }
 
@@ -258,6 +313,6 @@ PYBIND11_MODULE(off_load, m)
         .def("async_readv", &Offloader::async_readv, py::arg("tensors"), py::arg("key"), py::arg("callback") = py::none())
         .def("sync_writev", &Offloader::sync_writev, py::arg("tensors"), py::arg("key"))
         .def("sync_readv", &Offloader::sync_readv, py::arg("tensors"), py::arg("key"));
-//    m.def("get_backends", get_backends);
-//    m.def("probe_backend", probe_backend, py::arg("backend"));
+    m.def("get_backends", get_backends);
+    m.def("probe_backend", probe_backend, py::arg("backend"));
 }

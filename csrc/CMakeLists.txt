@@ -14,21 +14,20 @@ add_library(space_mgr
 target_include_directories(space_mgr PUBLIC ../include)
 
 
-include_directories(/home/lczxl/.local/packages/python3/include/python3.8)
-link_directories(/home/lczxl/.local/packages/python3/lib/python3.8)
-find_package(Torch REQUIRED NO_MODULE PATHS /home/lczxl/.local/packages/libtorch NO_DEFAULT_PATH)
-find_library(TORCH_PYTHON_LIBRARY torch_python PATHS /home/lczxl/.local/packages/libtorch/lib)
+
+find_package(Torch REQUIRED NO_MODULE PATHS $ENV{CMAKE_TORCH_PATH} NO_DEFAULT_PATH)
+find_library(TORCH_PYTHON_LIBRARY torch_python PATHS $ENV{CMAKE_TORCH_PATH}/lib)
 add_library(offload SHARED offload.cpp)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
-target_link_libraries(offload PUBLIC space_mgr PUBLIC colo_asyncio python3.8 "${TORCH_LIBRARIES}" ${TORCH_PYTHON_LIBRARY})
+
+# I can't compile without linking python
+#include_directories(/home/lczxl/.local/packages/python3/include/python3.8)
+#link_directories(/home/lczxl/.local/packages/python3/lib/python3.8)
+#target_link_libraries(offload PUBLIC space_mgr PUBLIC colo_asyncio python3.8 "${TORCH_LIBRARIES}" ${TORCH_PYTHON_LIBRARY})
+
+target_link_libraries(offload PUBLIC space_mgr PUBLIC colo_asyncio "${TORCH_LIBRARIES}" ${TORCH_PYTHON_LIBRARY})
+
 target_include_directories(offload PUBLIC ../include)
 
 pybind11_add_module(off_load MODULE offload.cpp)
 target_link_libraries(off_load PRIVATE offload)
-#file(GLOB_RECURSE PY_PROJ_FILES ${CMAKE_SOURCE_DIR}/colo_nvme/*.p*)
-#add_custom_command(OUTPUT ${CMAKE_SOURCE_DIR}/build/.timestamp
-#        COMMAND ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-#        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_SOURCE_DIR}/build/.timestamp
-#        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-#        DEPENDS colo_nvme ${PY_PROJ_FILES})
-#add_custom_target(colo_nvme_cp ALL DEPENDS ${CMAKE_SOURCE_DIR}/build/.timestamp)
