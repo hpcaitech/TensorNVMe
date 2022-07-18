@@ -33,5 +33,8 @@ setup(
     ext_modules=[cpp_ext_helper('colo_nvme._C', ['csrc/offload.cpp', 'csrc/uring.cpp', 'csrc/aio.cpp', 'csrc/space_mgr.cpp'],
                                 extra_compile_args=extra_compile_args,
                                 libraries=libraries)],
-    cmdclass={'build_ext': BuildExtension}
+    cmdclass={'build_ext': BuildExtension},
+    entry_points={
+        'console_scripts': ['colonvme=colo_nvme.cli:cli']
+    }
 )
