@@ -2,7 +2,8 @@ import os
 import torch
 import uuid
 from typing import Callable, Optional, List
-from colo_nvme._C import Offloader, get_backends
+# from colo_nvme._C import Offloader, get_backends
+from off_load import Offloader, get_backends
 
 
 class DiskOffloader(Offloader):

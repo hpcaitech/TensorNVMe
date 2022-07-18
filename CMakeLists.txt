@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(
-        ColossalAI-NVME
+        colo_nvme
         VERSION 0.1
         DESCRIPTION "ColossalAI NVME"
         LANGUAGES CXX

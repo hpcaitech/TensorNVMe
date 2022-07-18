@@ -1,34 +1,59 @@
 import os
-from setuptools import setup, find_packages
-from torch.utils.cpp_extension import CppExtension, BuildExtension
+import pathlib
 
-this_dir = os.path.dirname(os.path.abspath(__file__))
-
-
-def cpp_ext_helper(name, sources, **kwargs):
-    return CppExtension(
-        name,
-        [os.path.join(this_dir, path) for path in sources],
-        include_dirs=[os.path.join(this_dir, 'csrc'), os.path.join(this_dir, 'include')],
-        **kwargs
-    )
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 
 
-extra_compile_args = []
-if os.environ.get('DISABLE_URING') == '1':
-    extra_compile_args.append('-DDISABLE_URING')
-if os.environ.get('DISABLE_AIO') == '1':
-    extra_compile_args.append('-DDISABLE_AIO')
+class CMakeExtension(Extension):
+    def __init__(self, name, sources=None, sourcedir=''):
+        if sources is None:
+            sources = []
+        Extension.__init__(self, name, sources=sources)
+        self.sourcedir = os.path.abspath(sourcedir)
+
+
+class CMakeBuild(build_ext):
+    def run(self):
+        for ext in self.extensions:
+            if isinstance(ext, CMakeExtension):
+                self.build_cmake(ext)
+        super().run()
+
+    def build_cmake(self, ext):
+        cwd = pathlib.Path().absolute()
+
+        build_temp = f"{pathlib.Path(self.build_temp)}/{ext.name}"
+        os.makedirs(build_temp, exist_ok=True)
+        extdir = pathlib.Path(self.get_ext_fullpath(ext.name))
+        extdir.mkdir(parents=True, exist_ok=True)
+
+        config = "Debug" if self.debug else "Release"
+        cmake_args = [
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + str(extdir.parent.absolute()),
+            "-DCMAKE_BUILD_TYPE=" + config
+        ]
+
+        build_args = [
+            "--config", config,
+            "--", "-j12"
+        ]
+
+        os.chdir(build_temp)
+        self.spawn(["cmake", f"{str(extdir.parent.absolute())}"] + cmake_args)
+        if not self.dry_run:
+            self.spawn(["cmake", "--build", "."] + build_args)
+        os.chdir(str(cwd))
+
 
 setup(
     name='colo_nvme',
-    packages=find_packages(exclude=(
-        'csrc',
-        'tests',
-        '*.egg-info'
-    )),
-    ext_modules=[cpp_ext_helper('colo_nvme._C', ['csrc/offload.cpp', 'csrc/uring.cpp', 'csrc/aio.cpp', 'csrc/space_mgr.cpp'],
-                                extra_compile_args=extra_compile_args,
-                                libraries=['uring', 'aio'])],
-    cmdclass={'build_ext': BuildExtension}
+    version='0.0.1',
+    author='xxx',
+    author_email='xxx',
+    description='xxx',
+    long_description='',
+    ext_modules=[CMakeExtension('colo_nvme')],
+    cmdclass=dict(build_ext=CMakeBuild),
+    zip_safe=False,
 )
