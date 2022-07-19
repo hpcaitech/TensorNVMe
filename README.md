@@ -15,6 +15,11 @@
 
 ### Install colo_nvme
 
+First, install requirements:
+```shell
+pip install -r requirements.txt
+```
+
 To install `colo_nvme` with `liburing` and `libaio`:
 ```shell
 pip install -v --no-cache-dir -e .

@@ -1,15 +1,25 @@
 import os
+import sys
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CppExtension, BuildExtension
 from subprocess import call
-import sys
 from typing import List
+from platform import uname
+from packaging import version
+
+
+def check_uring_compatibility():
+    uname_info = uname()
+    if uname_info.system != 'Linux':
+        raise RuntimeError('Only Linux is supported')
+    kernel_version = version.parse(uname_info.release.split('-')[0])
+    return kernel_version >= version.parse('5.10')
 
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 enable_uring = True
 enable_aio = True
-if os.environ.get('DISABLE_URING') == '1':
+if os.environ.get('DISABLE_URING') == '1' or check_uring_compatibility():
     enable_uring = False
 if os.environ.get('DISABLE_AIO') == '1':
     enable_aio = False
