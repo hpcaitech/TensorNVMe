@@ -9,7 +9,26 @@
 
 ## Install
 
-You must install `liburing` and `libaio` first. You can install them through your package manager or from source code. We will introduce you how to install them from source code.
+~~You must install `liburing` and `libaio` first. You can install them through your package manager or from source code. We will introduce you how to install them from source code.~~
+
+`liburing` and `libaio` can be automatically installed now.
+
+### Install colo_nvme
+
+To install `colo_nvme` with `liburing` and `libaio`:
+```shell
+pip install -v --no-cache-dir -e .
+```
+
+To install `colo_nvme` with only `liburing`:
+```shell
+DISABLE_AIO=1 pip install -v --no-cache-dir -e .
+```
+
+To install `colo_nvme` with only `libaio`:
+```shell
+DISABLE_URING=1 pip install -v --no-cache-dir -e .
+```
 
 ### Install liburing
 ```shell
@@ -38,23 +57,6 @@ export LIBRARY_PATH=$HOME/.local/lib:$LIBRARY_PATH
 export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
 export C_INCLUDE_PATH=$HOME/.local/include:$C_INCLUDE_PATH
 export CPLUS_INCLUDE_PATH=$HOME/.local/include:$CPLUS_INCLUDE_PATH
-```
-
-### Install colo_nvme
-
-To install `colo_nvme` with `liburing` and `libaio`:
-```shell
-pip install -v --no-cache-dir -e .
-```
-
-To install `colo_nvme` with only `liburing`:
-```shell
-DISABLE_AIO=1 pip install -v --no-cache-dir -e .
-```
-
-To install `colo_nvme` with only `libaio`:
-```shell
-DISABLE_URING=1 pip install -v --no-cache-dir -e .
 ```
 
 ## How to test
