@@ -13,14 +13,13 @@
 #include "offload.h"
 #include "space_mgr.h"
 
-//TODO
+// TODO
 //#ifndef DISABLE_URING
 #include "uring.h"
 //#endif
 //#ifndef DISABLE_AIO
 #include "aio.h"
 //#endif
-
 
 iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 {
@@ -36,7 +35,7 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 std::unordered_set<std::string> get_backends()
 {
     std::unordered_set<std::string> backends;
-    //TODO
+    // TODO
     //#ifndef DISABLE_URING
     backends.insert("uring");
     //#endif
@@ -50,7 +49,8 @@ void probe_asyncio(const std::string &backend)
 {
     int fd = open("./test", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     AsyncIO *aio;
-    try {
+    try
+    {
         if (backend == "uring")
             aio = new UringAsyncIO(2);
         else
@@ -62,7 +62,8 @@ void probe_asyncio(const std::string &backend)
 
         int offset = 0;
         size_t len;
-        for (int i = 0; i < n_loop; i++) {
+        for (int i = 0; i < n_loop; i++)
+        {
             len = n_len;
             aio->write(fd, text[i], len, offset, nullptr);
             offset += len;
@@ -71,14 +72,17 @@ void probe_asyncio(const std::string &backend)
 
         char new_text[n_loop][n_len];
         offset = 0;
-        for (int i = 0; i < n_loop; i++) {
+        for (int i = 0; i < n_loop; i++)
+        {
             len = n_len;
             aio->read(fd, new_text[i], len, offset, nullptr);
             offset += len;
         }
         aio->sync_read_events();
-        for (int i = 0; i < n_loop; i++) {
-            for (int j = 0; j < n_len; j++) {
+        for (int i = 0; i < n_loop; i++)
+        {
+            for (int j = 0; j < n_len; j++)
+            {
                 assert(text[i][j] == new_text[i][j]);
             }
         }
@@ -86,7 +90,8 @@ void probe_asyncio(const std::string &backend)
         delete aio;
         remove("./test");
     }
-    catch(...){
+    catch (...)
+    {
         close(fd);
         delete aio;
         remove("./test");
@@ -99,11 +104,15 @@ bool probe_backend(const std::string &backend)
     std::unordered_set<std::string> backends = get_backends();
     if (backends.find(backend) == backends.end())
         return false;
-    if (backend == "uring")
-        probe_asyncio("uring");
-    if (backend == "aio")
-        probe_asyncio("aio");
-    return true;
+    try
+    {
+        probe_asyncio(backend);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
 }
 
 AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
@@ -115,7 +124,7 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
         throw std::runtime_error("Unsupported backend: " + backend);
     if (!probe_backend(backend))
         throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
-    //TODO
+    // TODO
     //#ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
@@ -127,61 +136,60 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
     throw std::runtime_error("Unsupported backend: " + backend);
 }
 
-
 Offloader::Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend) : filename(filename), space_mgr(SpaceManager(0))
-    {
-        this->aio = create_asyncio(n_entries, backend);
-        this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        this->aio->register_file(fd);
-    }
+{
+    this->aio = create_asyncio(n_entries, backend);
+    this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    this->aio->register_file(fd);
+}
 
 SpaceInfo Offloader::prepare_write(const at::Tensor &tensor, const std::string &key)
-    {
-        if (!tensor.is_contiguous() || !tensor.is_cpu())
-            throw std::runtime_error("Tensor must be contiguous and on cpu");
-        ull bytes = tensor.storage().nbytes();
-        ull offset = this->space_mgr.alloc(bytes);
-        SpaceInfo space_info(offset, bytes);
-        this->tensors_info[key] = space_info;
-        return space_info;
-    }
+{
+    if (!tensor.is_contiguous() || !tensor.is_cpu())
+        throw std::runtime_error("Tensor must be contiguous and on cpu");
+    ull bytes = tensor.storage().nbytes();
+    ull offset = this->space_mgr.alloc(bytes);
+    SpaceInfo space_info(offset, bytes);
+    this->tensors_info[key] = space_info;
+    return space_info;
+}
 
 SpaceInfo Offloader::prepare_read(const at::Tensor &tensor, const std::string &key)
-    {
-        if (!tensor.is_contiguous() || !tensor.is_cpu())
-            throw std::runtime_error("Tensor must be contiguous and on cpu");
-        if (this->tensors_info.find(key) == this->tensors_info.end())
-            throw std::runtime_error("Read error, tensor not found");
-        ull bytes = tensor.storage().nbytes();
-        SpaceInfo space_info = this->tensors_info[key];
-        if (bytes != space_info.second)
-            throw std::runtime_error("Read error, tensor shape mismatch");
-        this->tensors_info.erase(key);
-        return space_info;
-    }
+{
+    if (!tensor.is_contiguous() || !tensor.is_cpu())
+        throw std::runtime_error("Tensor must be contiguous and on cpu");
+    if (this->tensors_info.find(key) == this->tensors_info.end())
+        throw std::runtime_error("Read error, tensor not found");
+    ull bytes = tensor.storage().nbytes();
+    SpaceInfo space_info = this->tensors_info[key];
+    if (bytes != space_info.second)
+        throw std::runtime_error("Read error, tensor shape mismatch");
+    this->tensors_info.erase(key);
+    return space_info;
+}
 
 void Offloader::async_write(const at::Tensor &tensor, const std::string &key, callback_t callback)
-    {
-        ull offset, bytes;
-        std::tie(offset, bytes) = prepare_write(tensor, key);
-        this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
-    }
+{
+    ull offset, bytes;
+    std::tie(offset, bytes) = prepare_write(tensor, key);
+    this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+}
 
 void Offloader::async_read(const at::Tensor &tensor, const std::string &key, callback_t callback)
-    {
-        ull offset, bytes;
-        std::tie(offset, bytes) = prepare_read(tensor, key);
-        auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
-        this->aio->read(this->fd, tensor.data_ptr(), bytes, offset, fn);
-    }
+{
+    ull offset, bytes;
+    std::tie(offset, bytes) = prepare_read(tensor, key);
+    auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
+    this->aio->read(this->fd, tensor.data_ptr(), bytes, offset, fn);
+}
 
 void Offloader::sync_write(const at::Tensor &tensor, const std::string &key)
-    {
-        ull offset, bytes;
-        std::tie(offset, bytes) = prepare_write(tensor, key);
-        lseek(this->fd, offset, SEEK_SET);
-        write(this->fd, tensor.data_ptr(), bytes);
-    }
+{
+    ull offset, bytes;
+    std::tie(offset, bytes) = prepare_write(tensor, key);
+    lseek(this->fd, offset, SEEK_SET);
+    write(this->fd, tensor.data_ptr(), bytes);
+}
 
 void Offloader::sync_read(const at::Tensor &tensor, const std::string &key)
 {
@@ -287,7 +295,6 @@ void Offloader::sync_readv(const std::vector<at::Tensor> &tensors, const std::st
     delete iov;
 }
 
-
 void Offloader::release(ull offset, ull bytes, callback_t callback)
 {
     this->space_mgr.free(offset, bytes);
@@ -295,10 +302,9 @@ void Offloader::release(ull offset, ull bytes, callback_t callback)
         callback();
 }
 
-
 namespace py = pybind11;
 
-PYBIND11_MODULE(off_load, m)
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     py::class_<Offloader>(m, "Offloader")
         .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")
