@@ -19,7 +19,7 @@ def check_uring_compatibility():
 this_dir = os.path.dirname(os.path.abspath(__file__))
 enable_uring = True
 enable_aio = True
-if os.environ.get('DISABLE_URING') == '1' or check_uring_compatibility():
+if os.environ.get('DISABLE_URING') == '1' or not check_uring_compatibility():
     enable_uring = False
 if os.environ.get('DISABLE_AIO') == '1':
     enable_aio = False
@@ -77,7 +77,7 @@ def setup_dependencies():
     os.chdir(this_dir)
 
 
-if sys.argv[1] in ('install', 'develop'):
+if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
     setup_dependencies()
 
 
