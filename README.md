@@ -9,7 +9,7 @@
 
 This package is only supported on Linux. `liburing` and `libaio` can be automatically installed. `liburing` is supported on Linux >= `5.10`, and it won't be installed if the version of your Linux < `5.10`.
 
-> You must install pytorch before installing tensornvme. Once you upgrade pytorch, remember to reinstall tensornvme.
+> You must install pytorch and cmake before installing tensornvme. Once you upgrade pytorch, remember to reinstall tensornvme.
 
 First, install requirements:
 ```shell
