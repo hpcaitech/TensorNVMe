@@ -1,6 +1,6 @@
 import torch
 import pytest
-from colo_nvme import DiskOffloader
+from tensornvme import DiskOffloader
 
 
 @pytest.mark.parametrize('backend', ['uring', 'aio'])

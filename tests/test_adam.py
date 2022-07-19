@@ -1,7 +1,7 @@
 import torch
 import math
 import torch.nn as nn
-from colo_nvme import DiskOffloader
+from tensornvme import DiskOffloader
 from transformers import GPT2Config, GPT2LMHeadModel
 from typing import Optional
 from tqdm import tqdm
@@ -73,7 +73,8 @@ class Adam(torch.optim.Optimizer):
                     if self.offloader is None:
                         continue
                     if vecio:
-                        self.offloader.sync_writev([state['exp_avg'], state['exp_avg_sq']])
+                        self.offloader.sync_writev(
+                            [state['exp_avg'], state['exp_avg_sq']])
                     else:
                         self.offloader.sync_write(state['exp_avg'])
                         self.offloader.sync_write(state['exp_avg_sq'])
@@ -84,12 +85,14 @@ class Adam(torch.optim.Optimizer):
             with torch.enable_grad():
                 loss = closure()
 
-        params = [p for group in self.param_groups for p in group['params'] if p.grad is not None]
+        params = [
+            p for group in self.param_groups for p in group['params'] if p.grad is not None]
         if self.offloader is not None and self.prefetch > 0:
             for p in params[:self.prefetch]:
                 state = self.state[p]
                 if self.vecio:
-                    self.offloader.sync_readv([state['exp_avg'], state['exp_avg_sq']])
+                    self.offloader.sync_readv(
+                        [state['exp_avg'], state['exp_avg_sq']])
                 else:
                     self.offloader.sync_read(state['exp_avg'])
                     self.offloader.sync_read(state['exp_avg_sq'])
@@ -100,7 +103,8 @@ class Adam(torch.optim.Optimizer):
             state['step'] += 1
             beta1, beta2 = group['betas']
             self._pre_step(i, params)
-            adam(state['step'], group['lr'], p, p.grad, state['exp_avg'], state['exp_avg_sq'], beta1=beta1, beta2=beta2)
+            adam(state['step'], group['lr'], p, p.grad, state['exp_avg'],
+                 state['exp_avg_sq'], beta1=beta1, beta2=beta2)
             self._post_step(i, params)
 
         return loss
@@ -115,14 +119,18 @@ class Adam(torch.optim.Optimizer):
                     for prefetch_p in params[idx + self.prefetch:idx + self.prefetch * 2]:
                         prefetch_state = self.state[prefetch_p]
                         if self.vecio:
-                            self.offloader.async_readv([prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
+                            self.offloader.async_readv(
+                                [prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
                         else:
-                            self.offloader.async_read(prefetch_state['exp_avg'])
-                            self.offloader.async_read(prefetch_state['exp_avg_sq'])
+                            self.offloader.async_read(
+                                prefetch_state['exp_avg'])
+                            self.offloader.async_read(
+                                prefetch_state['exp_avg_sq'])
         else:
             state = self.state[params[idx]]
             if self.vecio:
-                self.offloader.sync_readv([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.sync_readv(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.sync_read(state['exp_avg'])
                 self.offloader.sync_read(state['exp_avg_sq'])
@@ -135,13 +143,15 @@ class Adam(torch.optim.Optimizer):
             if idx % self.prefetch == 0:
                 self.offloader.sync_write_events()
             if self.vecio:
-                self.offloader.async_writev([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.async_writev(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.async_write(state['exp_avg'])
                 self.offloader.async_write(state['exp_avg_sq'])
         else:
             if self.vecio:
-                self.offloader.sync_writev([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.sync_writev(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.sync_write(state['exp_avg'])
                 self.offloader.sync_write(state['exp_avg_sq'])
@@ -151,7 +161,8 @@ def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch:
     offloader = None
     if nvme_offload:
         offloader = DiskOffloader('.', 8, backend=backend)
-    optimizer = Adam(model.parameters(), 1e-3, offloader=offloader, prefetch=prefetch, vecio=vecio)
+    optimizer = Adam(model.parameters(), 1e-3,
+                     offloader=offloader, prefetch=prefetch, vecio=vecio)
     for p in model.parameters():
         p.grad = torch.rand_like(p)
     for _ in range(N_WARMUP):

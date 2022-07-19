@@ -1,5 +1,5 @@
 import click
-from colo_nvme._C import probe_backend, get_backends
+from tensornvme._C import probe_backend, get_backends
 
 
 def check_backend(backend: str):
