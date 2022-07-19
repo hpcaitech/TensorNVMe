@@ -10,16 +10,9 @@
 #include <error.h>
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
+#include <sys/uio.h>
 #include "offload.h"
 #include "space_mgr.h"
-
-// TODO
-//#ifndef DISABLE_URING
-#include "uring.h"
-//#endif
-//#ifndef DISABLE_AIO
-#include "aio.h"
-//#endif
 
 iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 {
@@ -35,26 +28,33 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 std::unordered_set<std::string> get_backends()
 {
     std::unordered_set<std::string> backends;
-    // TODO
-    //#ifndef DISABLE_URING
+#ifndef DISABLE_URING
     backends.insert("uring");
-    //#endif
-    //#ifndef DISABLE_AIO
+#endif
+#ifndef DISABLE_AIO
     backends.insert("aio");
-    //#endif
+#endif
     return backends;
 }
 
 void probe_asyncio(const std::string &backend)
 {
     int fd = open("./test", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    AsyncIO *aio;
+    AsyncIO *aio = nullptr;
     try
     {
         if (backend == "uring")
+#ifndef DISABLE_URING
             aio = new UringAsyncIO(2);
+#else
+            throw std::runtime_error("backend is not installed\n");
+#endif
         else
+#ifndef DISABLE_AIO
             aio = new AIOAsyncIO(2);
+#else
+            throw std::runtime_error("backend is not installed\n");
+#endif
 
         const int n_loop = 5, n_len = 18;
 
@@ -87,13 +87,15 @@ void probe_asyncio(const std::string &backend)
             }
         }
         close(fd);
-        delete aio;
+        if (aio)
+            delete aio;
         remove("./test");
     }
     catch (...)
     {
         close(fd);
-        delete aio;
+        if (aio)
+            delete aio;
         remove("./test");
         throw std::runtime_error("uring probe failed\n");
     }
@@ -124,15 +126,14 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
         throw std::runtime_error("Unsupported backend: " + backend);
     if (!probe_backend(backend))
         throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
-    // TODO
-    //#ifndef DISABLE_URING
+#ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
-    //#endif
-    //#ifndef DISABLE_AIO
+#endif
+#ifndef DISABLE_AIO
     if (backend == "aio")
         return new AIOAsyncIO(n_entries);
-    //#endif
+#endif
     throw std::runtime_error("Unsupported backend: " + backend);
 }
 
