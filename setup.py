@@ -1,5 +1,6 @@
 import os
 import sys
+import torch
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CppExtension, BuildExtension
 from subprocess import call
@@ -81,11 +82,32 @@ if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
     setup_dependencies()
 
 
+def get_version():
+    with open('version.txt') as f:
+        version = f.read().strip()
+        torch_version = '.'.join(torch.__version__.split('.')[:2])
+        version += f'+torch{torch_version}'
+        return version
+
+
+def fetch_requirements(path):
+    with open(path, 'r') as fd:
+        return [r.strip() for r in fd.readlines()]
+
+
+def fetch_readme():
+    with open('README.md', encoding='utf-8') as f:
+        return f.read()
+
+
 setup(
     name='colo_nvme',
+    version=get_version(),
     packages=find_packages(exclude=(
+        '3rd',
         'csrc',
         'tests',
+        'include',
         '*.egg-info'
     )),
     ext_modules=[cpp_ext_helper('colo_nvme._C', sources,
@@ -96,5 +118,16 @@ setup(
     cmdclass={'build_ext': BuildExtension},
     entry_points={
         'console_scripts': ['colonvme=colo_nvme.cli:cli']
-    }
+    },
+    description='A tensor disk offloader without data copying.',
+    long_description=fetch_readme(),
+    long_description_content_type='text/markdown',
+    license='Apache Software License 2.0',
+    install_requires=fetch_requirements('requirements.txt'),
+    python_requires='>=3.6',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: Apache Software License',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    ],
 )
