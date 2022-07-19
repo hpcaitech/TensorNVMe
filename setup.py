@@ -7,6 +7,18 @@ from typing import List
 
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
+enable_uring = True
+enable_aio = True
+if os.environ.get('DISABLE_URING') == '1':
+    enable_uring = False
+if os.environ.get('DISABLE_AIO') == '1':
+    enable_aio = False
+
+extra_compile_args = []
+libraries = ['aio']
+sources = ['csrc/offload.cpp', 'csrc/uring.cpp',
+           'csrc/aio.cpp', 'csrc/space_mgr.cpp']
+extra_objects = []
 
 
 def cpp_ext_helper(name, sources, **kwargs):
@@ -34,34 +46,29 @@ def find_static_lib(lib_name: str, lib_paths: List[str] = []) -> str:
     raise RuntimeError(f'{static_lib_name} is not found in {lib_paths}')
 
 
-def install_dependencies():
+def setup_dependencies():
     build_dir = os.path.join(this_dir, 'cmake-build')
+    if not enable_uring:
+        extra_compile_args.append('-DDISABLE_URING')
+        sources.remove('csrc/uring.cpp')
+    if not enable_aio:
+        extra_compile_args.append('-DDISABLE_AIO')
+        sources.remove('csrc/aio.cpp')
+        libraries.remove('aio')
     os.makedirs(build_dir, exist_ok=True)
     os.chdir(build_dir)
     call(['cmake', '..'])
-    call(['make'])
+    if enable_uring:
+        call(['make', 'extern_uring'])
+        extra_objects.append(find_static_lib(
+            'uring', [os.path.join(build_dir, '3rd/lib')]))
+    if enable_aio:
+        call(['make', 'extern_aio'])
     os.chdir(this_dir)
 
 
-extra_compile_args = []
-libraries = ['aio']
-sources = ['csrc/offload.cpp', 'csrc/uring.cpp',
-           'csrc/aio.cpp', 'csrc/space_mgr.cpp']
-extra_objects = []
-if os.environ.get('DISABLE_URING') == '1':
-    extra_compile_args.append('-DDISABLE_URING')
-    sources.remove('csrc/uring.cpp')
-if os.environ.get('DISABLE_AIO') == '1':
-    extra_compile_args.append('-DDISABLE_AIO')
-    libraries.remove('aio')
-    sources.remove('csrc/aio.cpp')
-
-
 if sys.argv[1] in ('install', 'develop'):
-    install_dependencies()
-    if os.environ.get('DISABLE_URING') != '1':
-        extra_objects.append(find_static_lib(
-            'uring', [os.path.join(this_dir, 'cmake-build/3rd/lib')]))
+    setup_dependencies()
 
 
 setup(
