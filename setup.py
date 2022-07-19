@@ -1,6 +1,5 @@
 import os
 import sys
-import torch
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CppExtension, BuildExtension
 from subprocess import call
@@ -85,9 +84,6 @@ if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
 def get_version():
     with open('version.txt') as f:
         version = f.read().strip()
-        if sys.argv[1] != 'sdist':
-            torch_version = '.'.join(torch.__version__.split('.')[:2])
-            version += f'+torch{torch_version}'
         return version
 
 
