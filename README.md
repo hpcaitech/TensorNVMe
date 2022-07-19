@@ -1,6 +1,4 @@
-# ColossalAI NVME offload
-
-> This is a demo.
+# TensorNVME
 
 ## Dependencies
 
@@ -9,11 +7,7 @@
 
 ## Install
 
-~~You must install `liburing` and `libaio` first. You can install them through your package manager or from source code. We will introduce you how to install them from source code.~~
-
-`liburing` and `libaio` can be automatically installed now.
-
-### Install tensornvme
+This package is only supported on Linux. `liburing` and `libaio` can be automatically installed. `liburing` is supported on Linux >= `5.10`, and it won't be installed if the version of your Linux < `5.10`.
 
 First, install requirements:
 ```shell
@@ -35,33 +29,85 @@ To install `tensornvme` with only `libaio`:
 DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
 
-### Install liburing
+## CLI
+
+We provide a CLI to test whether backends work well.
 ```shell
-git clone https://github.com/axboe/liburing.git
-cd liburing
-# If you have sudo privilege
-./configure && make && sudo make install
-# If you don't have sudo privilege
-./configure --prefix=~/.local && make && make install
-# "~/.local" can be replaced with any path
+tensornvme check
 ```
 
-### Install libaio
-```shell
-git clone https://pagure.io/libaio.git
-cd libaio
-# If you have sudo privilege
-sudo make prefix=/usr install
-# If you don't have sudo privilege
-make prefix=~/.local install
+## Usage
+
+It provide both synchronize and asynchronize I/O API.
+
+> Only CPU and contiguous tensors can be offloaded.
+
+Synchronize API:
+```python
+import torch
+from tensornvme import DiskOffloader
+
+x = torch.rand(2, 2)
+y = torch.rand(4, 4, 4)
+offloader = DiskOffloader('./offload')
+offloader.sync_write(x)
+# x is saved to a file on disk (in ./offload folder) and the memory of x is freed
+offloader.sync_read(x)
+# x is restored
+offloader.sync_writev([x, y])
+# x and y are offloaded
+offloader.sync_readv([x, y])
+# x and y are restored.
+# sync_writev() and sync_readv() are order sensitive
+# E.g. sync_writev([x, y]) and sync_writev([y, x]) are different
 ```
 
-If you install `liburing` or `libaio` without `sudo`, you must set environment variables correctly. Here is an example code snippet in `~/.bashrc`:
-```shell
-export LIBRARY_PATH=$HOME/.local/lib:$LIBRARY_PATH
-export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH
-export C_INCLUDE_PATH=$HOME/.local/include:$C_INCLUDE_PATH
-export CPLUS_INCLUDE_PATH=$HOME/.local/include:$CPLUS_INCLUDE_PATH
+Asynchronize API:
+```python
+import torch
+from tensornvme import DiskOffloader
+
+x = torch.rand(2, 2)
+y = torch.rand(4, 4, 4)
+offloader = DiskOffloader('./offload')
+offloader.async_write(x)
+# x is being offloaded in the background
+offloader.sync_write_events()
+# x is offloaded and the memory of x is freed
+offloader.async_read(x)
+# x is being restored in the background
+offloader.sync_read_events()
+# x is restored
+offloader.async_writev([x, y])
+# x and y are being offloaded in the background
+offloader.synchronize()
+# synchronize() will synchronize both write and read events.
+offloader.async_readv([x, y])
+offloader.synchronize()
+# x and y are restored.
+# async_writev() and async_readv() are also order sensitive
+```
+
+You can use asynchronize API to overlap computation and data moving.
+```python
+tensors = []
+
+for _ in range(10):
+    tensor = torch.rand(2, 2)
+    tensors.append(tensor)
+    offloader.sync_write(tensor)
+
+offloader.sync_read(tensors[0])
+
+for i, tensor in enumerate(tensors):
+    offloader.sync_read_events()
+    if i + 1 < len(tensors):
+        offloader.async_read(tensors[i+1])
+    tensor.mul_(2.0)
+    # compute with tensor
+    offloader.sync_write_events()
+    offloader.async_write(tensor)
+offloader.synchronize()
 ```
 
 ## How to test
