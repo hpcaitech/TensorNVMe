@@ -6,7 +6,7 @@ from colossalai.nn.optimizer.cpu_adam import CPUAdam
 from titans.model.gpt import gpt2_small, gpt2_xl
 from tqdm import tqdm
 
-from colo_nvme import DiskOffloader
+from tensornvme import DiskOffloader
 
 N_WARMUP = 3
 N_ACTIVATE = 5
@@ -41,7 +41,8 @@ class NVMECPUAdam(CPUAdam):
                     if self.offloader is None:
                         continue
                     if vecio:
-                        self.offloader.sync_writev([state['exp_avg'], state['exp_avg_sq']])
+                        self.offloader.sync_writev(
+                            [state['exp_avg'], state['exp_avg_sq']])
                     else:
                         self.offloader.sync_write(state['exp_avg'])
                         self.offloader.sync_write(state['exp_avg_sq'])
@@ -63,7 +64,8 @@ class NVMECPUAdam(CPUAdam):
                 beta1, beta2 = group['betas']
 
                 if target_device.type == 'cpu':
-                    assert p.data.numel() == p.grad.data.numel(), "parameter and gradient should have the same size"
+                    assert p.data.numel() == p.grad.data.numel(
+                    ), "parameter and gradient should have the same size"
                     assert state['exp_avg'].device.type == 'cpu', "exp_avg should stay on cpu"
                     assert state['exp_avg_sq'].device.type == 'cpu', "exp_avg should stay on cpu"
                     self._pre_step(p_i, group['params'])
@@ -91,7 +93,8 @@ class NVMECPUAdam(CPUAdam):
             for p in params[:self.prefetch]:
                 state = self.state[p]
                 if self.vecio:
-                    self.offloader.sync_readv([state['exp_avg'], state['exp_avg_sq']])
+                    self.offloader.sync_readv(
+                        [state['exp_avg'], state['exp_avg_sq']])
                 else:
                     self.offloader.sync_read(state['exp_avg'])
                     self.offloader.sync_read(state['exp_avg_sq'])
@@ -106,14 +109,18 @@ class NVMECPUAdam(CPUAdam):
                     for prefetch_p in params[idx + self.prefetch:idx + self.prefetch * 2]:
                         prefetch_state = self.state[prefetch_p]
                         if self.vecio:
-                            self.offloader.async_readv([prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
+                            self.offloader.async_readv(
+                                [prefetch_state['exp_avg'], prefetch_state['exp_avg_sq']])
                         else:
-                            self.offloader.async_read(prefetch_state['exp_avg'])
-                            self.offloader.async_read(prefetch_state['exp_avg_sq'])
+                            self.offloader.async_read(
+                                prefetch_state['exp_avg'])
+                            self.offloader.async_read(
+                                prefetch_state['exp_avg_sq'])
         else:
             state = self.state[params[idx]]
             if self.vecio:
-                self.offloader.sync_readv([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.sync_readv(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.sync_read(state['exp_avg'])
                 self.offloader.sync_read(state['exp_avg_sq'])
@@ -126,13 +133,15 @@ class NVMECPUAdam(CPUAdam):
             if idx % self.prefetch == 0:
                 self.offloader.sync_write_events()
             if self.vecio:
-                self.offloader.async_writev([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.async_writev(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.async_write(state['exp_avg'])
                 self.offloader.async_write(state['exp_avg_sq'])
         else:
             if self.vecio:
-                self.offloader.sync_writev([state['exp_avg'], state['exp_avg_sq']])
+                self.offloader.sync_writev(
+                    [state['exp_avg'], state['exp_avg_sq']])
             else:
                 self.offloader.sync_write(state['exp_avg'])
                 self.offloader.sync_write(state['exp_avg_sq'])
@@ -146,7 +155,8 @@ def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch:
     for _, p in enumerate(params):
         if p.grad is None and p.requires_grad:
             p.grad = torch.rand_like(p.data, dtype=torch.float)
-    optimizer = NVMECPUAdam(params, 1e-3, offloader=offloader, prefetch=prefetch, vecio=vecio)
+    optimizer = NVMECPUAdam(
+        params, 1e-3, offloader=offloader, prefetch=prefetch, vecio=vecio)
     for p in model.parameters():
         p.grad = torch.rand_like(p)
     for _ in range(N_WARMUP):
@@ -216,7 +226,8 @@ def test_adam():
         if cfg['backend'] is None:
             offloader = None
         else:
-            offloader = DiskOffloader('/data/user/offload', cfg['n_entries'], backend=cfg['backend'])
+            offloader = DiskOffloader(
+                '/data/user/offload', cfg['n_entries'], backend=cfg['backend'])
         optimizer_test = NVMECPUAdam(
             params_test, 1e-3, offloader=offloader, prefetch=cfg['prefetch'], vecio=cfg['vecio'])
         optimizer_test.step()

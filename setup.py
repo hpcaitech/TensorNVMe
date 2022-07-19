@@ -101,7 +101,7 @@ def fetch_readme():
 
 
 setup(
-    name='colo_nvme',
+    name='tensornvme',
     version=get_version(),
     packages=find_packages(exclude=(
         '3rd',
@@ -110,14 +110,14 @@ setup(
         'include',
         '*.egg-info'
     )),
-    ext_modules=[cpp_ext_helper('colo_nvme._C', sources,
+    ext_modules=[cpp_ext_helper('tensornvme._C', sources,
                                 extra_compile_args=extra_compile_args,
                                 extra_objects=extra_objects,
                                 libraries=libraries
                                 )],
     cmdclass={'build_ext': BuildExtension},
     entry_points={
-        'console_scripts': ['colonvme=colo_nvme.cli:cli']
+        'console_scripts': ['tensornvme=tensornvme.cli:cli']
     },
     description='A tensor disk offloader without data copying.',
     long_description=fetch_readme(),

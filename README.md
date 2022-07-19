@@ -13,24 +13,24 @@
 
 `liburing` and `libaio` can be automatically installed now.
 
-### Install colo_nvme
+### Install tensornvme
 
 First, install requirements:
 ```shell
 pip install -r requirements.txt
 ```
 
-To install `colo_nvme` with `liburing` and `libaio`:
+To install `tensornvme` with `liburing` and `libaio`:
 ```shell
 pip install -v --no-cache-dir .
 ```
 
-To install `colo_nvme` with only `liburing`:
+To install `tensornvme` with only `liburing`:
 ```shell
 DISABLE_AIO=1 pip install -v --no-cache-dir .
 ```
 
-To install `colo_nvme` with only `libaio`:
+To install `tensornvme` with only `libaio`:
 ```shell
 DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
