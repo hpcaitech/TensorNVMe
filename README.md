@@ -22,17 +22,17 @@ pip install -r requirements.txt
 
 To install `colo_nvme` with `liburing` and `libaio`:
 ```shell
-pip install -v --no-cache-dir -e .
+pip install -v --no-cache-dir .
 ```
 
 To install `colo_nvme` with only `liburing`:
 ```shell
-DISABLE_AIO=1 pip install -v --no-cache-dir -e .
+DISABLE_AIO=1 pip install -v --no-cache-dir .
 ```
 
 To install `colo_nvme` with only `libaio`:
 ```shell
-DISABLE_URING=1 pip install -v --no-cache-dir -e .
+DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
 
 ### Install liburing
