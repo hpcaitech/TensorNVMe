@@ -22,7 +22,7 @@ else(LIBURING)
     add_dependencies(uring extern_uring)
 endif(LIBURING)
 
-find_library(LIBAIO aio)
+find_library(LIBAIO aio ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 if(LIBAIO)
     message("libaio is found in ${LIBAIO}")
