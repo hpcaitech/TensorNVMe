@@ -1,5 +1,7 @@
 # TensorNVME
 
+A Python Library provides APIs to move PyTorch Tensors between CPU and NVMe.
+
 ## Dependencies
 
 - [liburing](https://github.com/axboe/liburing)
