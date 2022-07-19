@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(
-        ColossalAI-NVME
-        VERSION 0.1
-        DESCRIPTION "ColossalAI NVME"
+        tensornvme
+        DESCRIPTION "A tensor disk offloader without data copying."
         LANGUAGES CXX
 )
 
@@ -12,6 +11,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 add_subdirectory(3rd)
 add_subdirectory(csrc)
 
-#if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME OR MODERN_CMAKE_BUILD_TESTING) AND BUILD_TESTING)
-add_subdirectory(tests)
-#endif()
+if(EXISTS ${CMAKE_SOURCE_DIR}/tests)
+        add_subdirectory(tests)
+endif()
