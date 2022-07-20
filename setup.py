@@ -24,11 +24,11 @@ if os.environ.get('DISABLE_URING') == '1' or not check_uring_compatibility():
 if os.environ.get('DISABLE_AIO') == '1':
     enable_aio = False
 
-extra_compile_args = []
 libraries = ['aio']
 sources = ['csrc/offload.cpp', 'csrc/uring.cpp',
            'csrc/aio.cpp', 'csrc/space_mgr.cpp']
 extra_objects = []
+define_macros = []
 
 
 def cpp_ext_helper(name, sources, **kwargs):
@@ -59,10 +59,10 @@ def find_static_lib(lib_name: str, lib_paths: List[str] = []) -> str:
 def setup_dependencies():
     build_dir = os.path.join(this_dir, 'cmake-build')
     if not enable_uring:
-        extra_compile_args.append('-DDISABLE_URING')
+        define_macros.append(('DISABLE_URING', None))
         sources.remove('csrc/uring.cpp')
     if not enable_aio:
-        extra_compile_args.append('-DDISABLE_AIO')
+        define_macros.append(('DISABLE_AIO', None))
         sources.remove('csrc/aio.cpp')
         libraries.remove('aio')
     os.makedirs(build_dir, exist_ok=True)
@@ -108,9 +108,9 @@ setup(
         '*.egg-info'
     )),
     ext_modules=[cpp_ext_helper('tensornvme._C', sources,
-                                extra_compile_args=extra_compile_args,
                                 extra_objects=extra_objects,
-                                libraries=libraries
+                                libraries=libraries,
+                                define_macros=define_macros
                                 )],
     cmdclass={'build_ext': BuildExtension},
     entry_points={
