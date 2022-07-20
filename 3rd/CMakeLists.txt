@@ -6,14 +6,16 @@ else()
     set(INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-message("Install prefix: ${INSTALL_PREFIX}")
+if(DEFINED ENV{LD_LIBRARY_PATH})
+    string(REPLACE ":" ";" CMAKE_LIBRARY_PATH $ENV{LD_LIBRARY_PATH})
+endif()
 
 find_library(LIBURING uring ${INSTALL_PREFIX}/lib)
 
 if(LIBURING)
     message("liburing is found in ${LIBURING}")
 else(LIBURING)
-    message("liburing is not found")
+    message("liburing is not found, install in ${INSTALL_PREFIX}")
     ExternalProject_Add(extern_uring
         GIT_REPOSITORY https://github.com/axboe/liburing.git
         GIT_TAG liburing-2.2
@@ -36,7 +38,7 @@ find_library(LIBAIO aio ${INSTALL_PREFIX}/lib)
 if(LIBAIO)
     message("libaio is found in ${LIBAIO}")
 else(LIBAIO)
-    message("libaio is not found")
+    message("libaio is not found, install in ${INSTALL_PREFIX}")
     ExternalProject_Add(extern_aio
         GIT_REPOSITORY https://pagure.io/libaio.git
         GIT_TAG libaio-0.3.113
