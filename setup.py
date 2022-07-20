@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import CppExtension, BuildExtension
@@ -6,6 +7,11 @@ from subprocess import call
 from typing import List
 from platform import uname
 from packaging import version
+
+TENSORNVME_INITIALIZE_RE_BLOCK = (
+    r"^# >>> tensornvme initialize >>>(?:\n|\r\n)"
+    r"([\s\S]*?)"
+    r"# <<< tensornvme initialize <<<(?:\n|\r\n)?")
 
 
 def check_uring_compatibility():
@@ -17,12 +23,20 @@ def check_uring_compatibility():
 
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
+backend_install_dir = os.path.join(os.path.expanduser('~'), '.tensornvme')
+
 enable_uring = True
 enable_aio = True
 if os.environ.get('DISABLE_URING') == '1' or not check_uring_compatibility():
     enable_uring = False
 if os.environ.get('DISABLE_AIO') == '1':
     enable_aio = False
+assert enable_aio or enable_uring
+if os.environ.get('WITH_ROOT') == '1':
+    backend_install_dir = '/usr'
+    if not os.access(backend_install_dir, os.W_OK):
+        raise RuntimeError(
+            'Permission denied, please make sure you have root access')
 
 libraries = ['aio']
 sources = ['csrc/offload.cpp', 'csrc/uring.cpp',
@@ -36,16 +50,15 @@ def cpp_ext_helper(name, sources, **kwargs):
         name,
         [os.path.join(this_dir, path) for path in sources],
         include_dirs=[os.path.join(this_dir, 'csrc'), os.path.join(this_dir, 'include'),
-                      os.path.join(this_dir, 'cmake-build/3rd/include')],
-        library_dirs=[os.path.join(this_dir, 'cmake-build/3rd/lib')],
+                      os.path.join(backend_install_dir, 'include')],
+        library_dirs=[os.path.join(backend_install_dir, 'lib')],
         **kwargs
     )
 
 
 def find_static_lib(lib_name: str, lib_paths: List[str] = []) -> str:
     static_lib_name = f'lib{lib_name}.a'
-    lib_paths.extend(['/usr/lib', '/usr/lib64', '/usr/local/lib',
-                      '/usr/local/lib64'])
+    lib_paths.extend(['/usr/lib', '/usr/lib64'])
     if os.environ.get('LIBRARY_PATH', None) is not None:
         lib_paths.extend(os.environ['LIBRARY_PATH'].split(':'))
     for lib_dir in lib_paths:
@@ -54,6 +67,18 @@ def find_static_lib(lib_name: str, lib_paths: List[str] = []) -> str:
                 if filename == static_lib_name:
                     return os.path.join(lib_dir, static_lib_name)
     raise RuntimeError(f'{static_lib_name} is not found in {lib_paths}')
+
+
+def setup_bachrc():
+    init_rules = f'export LD_LIBRARY_PATH="{backend_install_dir}/lib:$LD_LIBRARY_PATH"'
+    bachrc_path = os.path.join(os.path.expanduser('~'), '.bashrc')
+    with open(bachrc_path, 'a+') as f:
+        f.seek(0)
+        rules = f.read()
+        if not re.search(TENSORNVME_INITIALIZE_RE_BLOCK, rules, flags=re.DOTALL | re.MULTILINE):
+            f.write(
+                f'# >>> tensornvme initialize >>>\n{init_rules}\n# <<< tensornvme initialize <<<\n')
+            print(f'{bachrc_path} is changed, please source it.')
 
 
 def setup_dependencies():
@@ -66,15 +91,18 @@ def setup_dependencies():
         sources.remove('csrc/aio.cpp')
         libraries.remove('aio')
     os.makedirs(build_dir, exist_ok=True)
+    os.makedirs(backend_install_dir, exist_ok=True)
     os.chdir(build_dir)
-    call(['cmake', '..'])
+    call(['cmake', '..', f'-DBACKEND_INSTALL_PREFIX={backend_install_dir}'])
     if enable_uring:
         call(['make', 'extern_uring'])
         extra_objects.append(find_static_lib(
-            'uring', [os.path.join(build_dir, '3rd/lib')]))
+            'uring', [os.path.join(backend_install_dir, 'lib')]))
     if enable_aio:
         call(['make', 'extern_aio'])
     os.chdir(this_dir)
+    if os.environ.get('WITH_ROOT') != '1':
+        setup_bachrc()
 
 
 if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
