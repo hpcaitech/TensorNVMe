@@ -13,6 +13,7 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: '3.7.12'
+    - run: pip install packaging
     - run: python setup.py sdist
     # publish to PyPI if executed on the main branch
     # publish to Test PyPI if executed on the develop branch
