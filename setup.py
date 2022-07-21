@@ -113,7 +113,7 @@ def setup_dependencies():
         setup_bachrc()
 
 
-if sys.argv[1] in ('install', 'develop'):
+if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
     setup_dependencies()
 
 
