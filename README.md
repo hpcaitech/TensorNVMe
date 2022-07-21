@@ -33,6 +33,8 @@ To install `tensornvme` with only `libaio`:
 DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
 
+It will search `libaio` and `liburing` in `/usr/lib`, `/usr/lib64` and `$LD_LIBRARY_PATH`. If not found, backends will be installed in `~/.tensornvme`, and `~/.bashrc` will be modified to set `$LD_LIBRARY_PATH` correctly. If you use other shells, please make sure `$LD_LIBRARY_PATH` is set correctly.
+
 ## CLI
 
 We provide a CLI to test whether backends work well.
