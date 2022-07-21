@@ -55,6 +55,12 @@ pip install tensornvme
 ```
 All acceptable environment variables are the same as those when installing from source.
 
+## Use docker
+
+```shell
+git clone https://github.com/hpcaitech/TensorNVMe.git && cd TensorNVMe/docker && docker build -t tensornvme .
+```
+
 ## CLI
 
 We provide a CLI to test whether backends work well.
