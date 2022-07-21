@@ -50,7 +50,7 @@ def cpp_ext_helper(name, sources, **kwargs):
     if 'C_INCLUDE_PATH' in os.environ:
         extra_include_dirs.extend(os.environ['C_INCLUDE_PATH'].split(':'))
     if 'CPLUS_INCLUDE_PATH' in os.environ:
-        extra_include_dirs.extend(os.environ['C_INCLUDE_PATH'].split(':'))
+        extra_include_dirs.extend(os.environ['CPLUS_INCLUDE_PATH'].split(':'))
     extra_include_dirs = list(
         filter(lambda s: len(s) > 0, set(extra_include_dirs)))
     return CppExtension(
