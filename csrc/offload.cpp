@@ -39,23 +39,29 @@ std::unordered_set<std::string> get_backends()
 
 void probe_asyncio(const std::string &backend)
 {
-    int fd = open("./test", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    AsyncIO *aio = nullptr;
+    FILE *fp = tmpfile();
+    if (!fp)
+    {
+        printf("Create tmpfile error: %s\n", strerror(errno));
+        throw std::runtime_error("uring probe failed\n");
+    }
     try
     {
+        std::unique_ptr<AsyncIO> aio;
         if (backend == "uring")
 #ifndef DISABLE_URING
-            aio = new UringAsyncIO(2);
+            aio.reset(new UringAsyncIO(2));
 #else
             throw std::runtime_error("backend is not installed\n");
 #endif
         else
 #ifndef DISABLE_AIO
-            aio = new AIOAsyncIO(2);
+            aio.reset(new AIOAsyncIO(2));
 #else
             throw std::runtime_error("backend is not installed\n");
 #endif
 
+        int fd = fileno(fp);
         const int n_loop = 5, n_len = 18;
 
         char text[n_loop][n_len];
@@ -86,17 +92,11 @@ void probe_asyncio(const std::string &backend)
                 assert(text[i][j] == new_text[i][j]);
             }
         }
-        close(fd);
-        if (aio)
-            delete aio;
-        remove("./test");
+        fclose(fp);
     }
     catch (...)
     {
-        close(fd);
-        if (aio)
-            delete aio;
-        remove("./test");
+        fclose(fp);
         throw std::runtime_error("uring probe failed\n");
     }
 }
