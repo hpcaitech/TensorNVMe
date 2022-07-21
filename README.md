@@ -11,7 +11,15 @@ A Python Library provides APIs to move PyTorch Tensors between CPU and NVMe.
 
 This package is only supported on Linux. `liburing` and `libaio` can be automatically installed. `liburing` is supported on Linux >= `5.10`, and it won't be installed if the version of your Linux < `5.10`.
 
+It will search `libaio` and `liburing` in `/usr/lib`, `/usr/lib64` and `$LD_LIBRARY_PATH`. If not found, backends will be installed in `~/.tensornvme`, and `~/.bashrc` will be modified to set `$LD_LIBRARY_PATH` correctly. **Please `source ~/.bashrc` after installation.** If you use other shells, please make sure `$LD_LIBRARY_PATH` is set correctly.
+
 > You must install pytorch and cmake before installing tensornvme. Once you upgrade pytorch, remember to reinstall tensornvme.
+
+### From source
+
+```shell
+git clone https://github.com/hpcaitech/TensorNVMe.git && cd TensorNVMe
+```
 
 First, install requirements:
 ```shell
@@ -33,13 +41,19 @@ To install `tensornvme` with only `libaio`:
 DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
 
-It will search `libaio` and `liburing` in `/usr/lib`, `/usr/lib64` and `$LD_LIBRARY_PATH`. If not found, backends will be installed in `~/.tensornvme`, and `~/.bashrc` will be modified to set `$LD_LIBRARY_PATH` correctly. **Please `source ~/.bashrc` after installation.** If you use other shells, please make sure `$LD_LIBRARY_PATH` is set correctly.
-
 If you want to install `libaio` or `liburing` for system:
 ```shell
-WITH_ROOT=1 sudo -v --no-cache-dir .
+WITH_ROOT=1 sudo pip install -v --no-cache-dir .
 ```
-Then they will be installed in `/usr` and `~/.bashrc` will not be modified.
+Then they will be installed in `/usr` and `~/.bashrc` will not be modified. Make sure you have root access.
+
+### From PIP
+
+```shell
+pip install packaging
+pip install tensornvme
+```
+All acceptable environment variables are the same as those when installing from source.
 
 ## CLI
 
