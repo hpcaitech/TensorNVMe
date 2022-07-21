@@ -2,11 +2,11 @@ import os
 import re
 import sys
 from setuptools import setup, find_packages
-from torch.utils.cpp_extension import CppExtension, BuildExtension
 from subprocess import call
 from typing import List
 from platform import uname
 from packaging import version
+
 
 TENSORNVME_INITIALIZE_RE_BLOCK = (
     r"^# >>> tensornvme initialize >>>(?:\n|\r\n)"
@@ -43,9 +43,12 @@ sources = ['csrc/offload.cpp', 'csrc/uring.cpp',
            'csrc/aio.cpp', 'csrc/space_mgr.cpp']
 extra_objects = []
 define_macros = []
+ext_modules = []
+cmdclass = {}
 
 
 def cpp_ext_helper(name, sources, **kwargs):
+    from torch.utils.cpp_extension import CppExtension
     extra_include_dirs = []
     if 'C_INCLUDE_PATH' in os.environ:
         extra_include_dirs.extend(os.environ['C_INCLUDE_PATH'].split(':'))
@@ -115,6 +118,13 @@ def setup_dependencies():
 
 if sys.argv[1] in ('install', 'develop', 'bdist_wheel'):
     setup_dependencies()
+    from torch.utils.cpp_extension import BuildExtension
+    ext_modules.append(cpp_ext_helper('tensornvme._C', sources,
+                                      extra_objects=extra_objects,
+                                      libraries=libraries,
+                                      define_macros=define_macros
+                                      ))
+    cmdclass['build_ext'] = BuildExtension
 
 
 def get_version():
@@ -143,12 +153,8 @@ setup(
         'include',
         '*.egg-info'
     )),
-    ext_modules=[cpp_ext_helper('tensornvme._C', sources,
-                                extra_objects=extra_objects,
-                                libraries=libraries,
-                                define_macros=define_macros
-                                )],
-    cmdclass={'build_ext': BuildExtension},
+    ext_modules=ext_modules,
+    cmdclass=cmdclass,
     entry_points={
         'console_scripts': ['tensornvme=tensornvme.cli:cli']
     },
