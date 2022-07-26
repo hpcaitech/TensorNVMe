@@ -35,6 +35,7 @@ public:
     virtual void writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) = 0;
     virtual void readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) = 0;
 
+    virtual void wait() = 0;
     virtual void sync_write_events() = 0;
     virtual void sync_read_events() = 0;
     virtual void synchronize() = 0;
