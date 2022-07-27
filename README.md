@@ -131,14 +131,25 @@ for _ in range(10):
 
 offloader.sync_read(tensors[0])
 
+# Pipeline writing tensor[i] and reading tensor[i+1]
 for i, tensor in enumerate(tensors):
     offloader.sync_read_events()
     if i + 1 < len(tensors):
-        offloader.async_read(tensors[i+1])
+        offloader._async_read_nowait(tensors[i+1])
     tensor.mul_(2.0)
     # compute with tensor
     offloader.sync_write_events()
-    offloader.async_write(tensor)
+    offloader._async_write_nowait(tensor)
+offloader.synchronize()
+
+# Out of order overlap
+for i, tensor in enumerate(tensors):
+    def compute_then_offload():
+        tensor.mul_(2.0)
+        offloader.async_write(tensor)
+
+    offloader.async_read(tensor, callback=compute_then_offload)
+
 offloader.synchronize()
 ```
 

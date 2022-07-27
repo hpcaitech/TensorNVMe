@@ -29,9 +29,9 @@ void UringAsyncIO::wait()
         this->n_read_events--;
     else
         throw std::runtime_error("Unknown IO event type");
+    io_uring_cqe_seen(&this->ring, cqe);
     if (data->callback != nullptr)
         data->callback();
-    io_uring_cqe_seen(&this->ring, cqe);
 }
 
 void UringAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
