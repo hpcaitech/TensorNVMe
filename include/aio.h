@@ -15,7 +15,7 @@ private:
     {
     };
 
-    void wait();
+    void get_event(WaitType wt);
 
 public:
     AIOAsyncIO(unsigned int n_entries);

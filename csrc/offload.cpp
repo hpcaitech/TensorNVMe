@@ -174,6 +174,8 @@ void Offloader::async_write(const at::Tensor &tensor, const std::string &key, ca
     ull offset, bytes;
     std::tie(offset, bytes) = prepare_write(tensor, key);
     this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::async_read(const at::Tensor &tensor, const std::string &key, callback_t callback)
@@ -182,6 +184,8 @@ void Offloader::async_read(const at::Tensor &tensor, const std::string &key, cal
     std::tie(offset, bytes) = prepare_read(tensor, key);
     auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
     this->aio->read(this->fd, tensor.data_ptr(), bytes, offset, fn);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::sync_write(const at::Tensor &tensor, const std::string &key)
@@ -264,6 +268,8 @@ void Offloader::async_writev(const std::vector<at::Tensor> &tensors, const std::
     std::tie(offset, bytes) = prepare_writev(tensors, key);
     iovec *iov = tensors_to_iovec(tensors);
     this->aio->writev(this->fd, iov, tensors.size(), offset, callback);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::async_readv(const std::vector<at::Tensor> &tensors, const std::string &key, callback_t callback)
@@ -274,6 +280,8 @@ void Offloader::async_readv(const std::vector<at::Tensor> &tensors, const std::s
     iovec *iov = tensors_to_iovec(tensors);
     auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
     this->aio->readv(this->fd, iov, tensors.size(), offset, fn);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::sync_writev(const std::vector<at::Tensor> &tensors, const std::string &key)

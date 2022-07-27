@@ -22,29 +22,35 @@ git clone https://github.com/hpcaitech/TensorNVMe.git && cd TensorNVMe
 ```
 
 First, install requirements:
+
 ```shell
 pip install -r requirements.txt
 ```
 
 To install `tensornvme` with `liburing` and `libaio`:
+
 ```shell
 pip install -v --no-cache-dir .
 ```
 
 To install `tensornvme` with only `liburing`:
+
 ```shell
 DISABLE_AIO=1 pip install -v --no-cache-dir .
 ```
 
 To install `tensornvme` with only `libaio`:
+
 ```shell
 DISABLE_URING=1 pip install -v --no-cache-dir .
 ```
 
 If you want to install `libaio` or `liburing` for system:
+
 ```shell
 WITH_ROOT=1 sudo pip install -v --no-cache-dir .
 ```
+
 Then they will be installed in `/usr` and `~/.bashrc` will not be modified. Make sure you have root access.
 
 ### From PIP
@@ -53,6 +59,7 @@ Then they will be installed in `/usr` and `~/.bashrc` will not be modified. Make
 pip install packaging
 pip install tensornvme
 ```
+
 All acceptable environment variables are the same as those when installing from source.
 
 ## Use docker
@@ -64,6 +71,7 @@ git clone https://github.com/hpcaitech/TensorNVMe.git && cd TensorNVMe/docker &&
 ## CLI
 
 We provide a CLI to test whether backends work well.
+
 ```shell
 tensornvme check
 ```
@@ -75,6 +83,7 @@ It provide both synchronize and asynchronize I/O API.
 > Only CPU and contiguous tensors can be offloaded.
 
 Synchronize API:
+
 ```python
 import torch
 from tensornvme import DiskOffloader
@@ -95,6 +104,7 @@ offloader.sync_readv([x, y])
 ```
 
 Asynchronize API:
+
 ```python
 import torch
 from tensornvme import DiskOffloader
@@ -121,6 +131,7 @@ offloader.synchronize()
 ```
 
 You can use asynchronize API to overlap computation and data moving.
+
 ```python
 tensors = []
 
@@ -131,12 +142,12 @@ for _ in range(10):
 
 offloader.sync_read(tensors[0])
 
+# prefetch=1, writing tensor[i] and reading tensor[i+1]
 for i, tensor in enumerate(tensors):
     offloader.sync_read_events()
     if i + 1 < len(tensors):
         offloader.async_read(tensors[i+1])
-    tensor.mul_(2.0)
-    # compute with tensor
+    tensor.mul_(2.0) # compute
     offloader.sync_write_events()
     offloader.async_write(tensor)
 offloader.synchronize()

@@ -18,10 +18,17 @@ UringAsyncIO::~UringAsyncIO()
     io_uring_queue_exit(&this->ring);
 }
 
-void UringAsyncIO::wait()
+void UringAsyncIO::get_event(WaitType wt)
 {
     io_uring_cqe *cqe;
-    io_uring_wait_cqe(&this->ring, &cqe);
+    if (wt == WAIT){
+        io_uring_wait_cqe(&this->ring, &cqe);
+    }
+    else{
+        int ret = io_uring_peek_cqe(&this->ring, &cqe);
+        if (ret != 0) return;
+    }
+
     std::unique_ptr<IOData> data(static_cast<IOData *>(io_uring_cqe_get_data(cqe)));
     if (data->type == WRITE)
         this->n_write_events--;
@@ -29,9 +36,9 @@ void UringAsyncIO::wait()
         this->n_read_events--;
     else
         throw std::runtime_error("Unknown IO event type");
+    io_uring_cqe_seen(&this->ring, cqe);
     if (data->callback != nullptr)
         data->callback();
-    io_uring_cqe_seen(&this->ring, cqe);
 }
 
 void UringAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
@@ -57,19 +64,19 @@ void UringAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long
 void UringAsyncIO::sync_write_events()
 {
     while (this->n_write_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void UringAsyncIO::sync_read_events()
 {
     while (this->n_read_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void UringAsyncIO::synchronize()
 {
     while (this->n_write_events > 0 || this->n_read_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void UringAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)
