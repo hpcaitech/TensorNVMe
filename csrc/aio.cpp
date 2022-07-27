@@ -19,12 +19,15 @@ AIOAsyncIO::~AIOAsyncIO()
     io_destroy(this->io_ctx);
 }
 
-void AIOAsyncIO::wait()
+void AIOAsyncIO::get_event(WaitType wt)
 {
     std::unique_ptr<io_event> events(new io_event[this->max_nr]);
     int num_events;
 
-    num_events = io_getevents(io_ctx, this->min_nr, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
+    if(wt == WAIT)
+        num_events = io_getevents(io_ctx, this->min_nr, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
+    else
+        num_events = io_getevents(io_ctx, 0, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
 
     for (int i = 0; i < num_events; i++) /* 开始获取每一个event并且做相应处理 */
     {
@@ -77,19 +80,19 @@ void AIOAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long o
 void AIOAsyncIO::sync_write_events()
 {
     while (this->n_write_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void AIOAsyncIO::sync_read_events()
 {
     while (this->n_read_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void AIOAsyncIO::synchronize()
 {
     while (this->n_write_events > 0 || this->n_read_events > 0)
-        wait();
+        get_event(WAIT);
 }
 
 void AIOAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback)

@@ -171,33 +171,21 @@ SpaceInfo Offloader::prepare_read(const at::Tensor &tensor, const std::string &k
 
 void Offloader::async_write(const at::Tensor &tensor, const std::string &key, callback_t callback)
 {
-    _async_write_nowait(tensor, key, callback);
-
-    // Notify pending memory collection and callback.
-    this->aio->wait();
-}
-
-void Offloader::_async_write_nowait(const at::Tensor &tensor, const std::string &key, callback_t callback)
-{
     ull offset, bytes;
     std::tie(offset, bytes) = prepare_write(tensor, key);
     this->aio->write(this->fd, tensor.data_ptr(), bytes, offset, callback);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::async_read(const at::Tensor &tensor, const std::string &key, callback_t callback)
-{
-    _async_read_nowait(tensor, key, callback);
-
-    // Notify pending memory collection and callback.
-    this->aio->wait();
-}
-
-void Offloader::_async_read_nowait(const at::Tensor &tensor, const std::string &key, callback_t callback)
 {
     ull offset, bytes;
     std::tie(offset, bytes) = prepare_read(tensor, key);
     auto fn = std::bind(&Offloader::release, this, offset, bytes, callback);
     this->aio->read(this->fd, tensor.data_ptr(), bytes, offset, fn);
+
+    this->aio->get_event(NOWAIT);
 }
 
 void Offloader::sync_write(const at::Tensor &tensor, const std::string &key)
@@ -327,8 +315,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")
         .def("async_write", &Offloader::async_write, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
         .def("async_read", &Offloader::async_read, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
-        .def("_async_write_nowait", &Offloader::_async_write_nowait, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
-        .def("_async_read_nowait", &Offloader::_async_read_nowait, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
         .def("sync_write", &Offloader::sync_write, py::arg("tensor"), py::arg("key"))
         .def("sync_read", &Offloader::sync_read, py::arg("tensor"), py::arg("key"))
         .def("sync_write_events", &Offloader::sync_write_events)

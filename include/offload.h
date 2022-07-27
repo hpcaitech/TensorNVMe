@@ -17,8 +17,6 @@ public:
     SpaceInfo prepare_read(const at::Tensor &tensor, const std::string &key);
     void async_write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr);
     void async_read(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr);
-    void _async_write_nowait(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr);
-    void _async_read_nowait(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr);
     void sync_write(const at::Tensor &tensor, const std::string &key);
     void sync_read(const at::Tensor &tensor, const std::string &key);
     void sync_write_events();

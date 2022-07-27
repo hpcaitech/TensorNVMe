@@ -10,7 +10,7 @@ private:
     unsigned int n_entries;
     io_uring ring;
 
-    void wait();
+    void get_event(WaitType wt);
 
 public:
     UringAsyncIO(unsigned int n_entries);
