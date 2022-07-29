@@ -1,17 +1,14 @@
-import copy
 from typing import Optional
 
 import torch
 from colossalai.nn.optimizer.cpu_adam import CPUAdam
-from titans.model.gpt import GPT
+from tqdm import tqdm
 
 from tensornvme import DiskOffloader
+from benchmark_adam import gpt2_xl
 
-
-def gpt2_toy(**kwargs):
-    model_kwargs = dict(hidden_size=8, depth=2, num_heads=2, **kwargs)
-    model = GPT(**model_kwargs)
-    return model
+N_WARMUP = 2
+N_ACTIVATE = 4
 
 
 class NVMECPUAdam(CPUAdam):
@@ -149,54 +146,39 @@ class NVMECPUAdam(CPUAdam):
                 self.offloader.sync_write(state['exp_avg_sq'])
 
 
-def test_adam():
-    params = list(gpt2_toy().cpu().parameters())
+def run_adam(model: torch.nn.Module, nvme_offload: bool, backend: str, prefetch: int, vecio: bool):
+    offloader = None
+    if nvme_offload:
+        offloader = DiskOffloader('.', 8, backend=backend)
+    params = list(model.cpu().parameters())
     for _, p in enumerate(params):
         if p.grad is None and p.requires_grad:
-            p.grad = torch.ones_like(p.data, dtype=torch.float) * 0.12345
-
-    params_gt = copy.deepcopy(params)
-    for _, p in enumerate(params_gt):
-        if p.grad is None and p.requires_grad:
-            p.grad = torch.ones_like(p.data, dtype=torch.float) * 0.12345
-    optimizer = CPUAdam(params_gt, 1e-3)
-    optimizer.step()
-
-    test_config = [
-        {'n_entries': 1, 'backend': None, 'prefetch': 0, 'vecio': False},
-
-        {'n_entries': 1, 'backend': 'uring', 'prefetch': 0, 'vecio': False},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 2, 'vecio': False},
-
-        {'n_entries': 1, 'backend': 'uring', 'prefetch': 0, 'vecio': True},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 2, 'vecio': True},
-
-        {'n_entries': 1, 'backend': 'aio', 'prefetch': 0, 'vecio': False},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 2, 'vecio': False},
-
-        {'n_entries': 1, 'backend': 'aio', 'prefetch': 0, 'vecio': True},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 2, 'vecio': True},
-    ]
-
-    for i, cfg in enumerate(test_config):
-        params_test = copy.deepcopy(params)
-        for _, p in enumerate(params_test):
-            if p.grad is None and p.requires_grad:
-                p.grad = torch.ones_like(p.data, dtype=torch.float) * 0.12345
-        if cfg['backend'] is None:
-            offloader = None
-        else:
-            offloader = DiskOffloader(
-                '.', cfg['n_entries'], backend=cfg['backend'])
-        optimizer_test = NVMECPUAdam(
-            params_test, 1e-3, offloader=offloader, prefetch=cfg['prefetch'], vecio=cfg['vecio'])
-        optimizer_test.step()
-
-        for p1, p2, p3 in zip(params_gt, params_test, params):
-            assert torch.equal(p1, p2)
-            assert not torch.equal(p1, p3)
+            p.grad = torch.rand_like(p.data, dtype=torch.float)
+    optimizer = NVMECPUAdam(
+        params, 1e-3, offloader=offloader, prefetch=prefetch, vecio=vecio)
+    for p in model.parameters():
+        p.grad = torch.rand_like(p)
+    for _ in range(N_WARMUP):
+        optimizer.step()
+    if not nvme_offload:
+        desc = 'CPU'
+        postfix = None
+    else:
+        desc = 'NVME'
+        postfix = {'backend': backend, 'prefetch': prefetch, 'vecio': vecio}
+    for _ in tqdm(range(N_ACTIVATE), desc=desc, postfix=postfix):
+        optimizer.step()
 
 
 if __name__ == '__main__':
+    model = gpt2_xl()
     with torch.no_grad():
-        test_adam()
+        run_adam(model, False, 'uring', 0, False)
+        run_adam(model, True, 'uring', 0, False)
+        run_adam(model, True, 'uring', 0, True)
+        run_adam(model, True, 'uring', 1, False)
+        run_adam(model, True, 'uring', 1, True)
+        run_adam(model, True, 'uring', 2, False)
+        run_adam(model, True, 'uring', 2, True)
+        run_adam(model, True, 'uring', 4, False)
+        run_adam(model, True, 'uring', 4, True)
