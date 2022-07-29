@@ -9,11 +9,9 @@ private:
     io_context_t io_ctx = nullptr;
     int n_write_events = 0; /* event个数 */
     int n_read_events = 0;
-    int max_nr = 10;
+    int max_nr;
     int min_nr = 1;
-    struct timespec timeout
-    {
-    };
+    struct timespec timeout;
 
     void get_event(WaitType wt);
 
