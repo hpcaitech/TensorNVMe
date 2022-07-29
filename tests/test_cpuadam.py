@@ -4,7 +4,6 @@ from typing import Optional
 import torch
 from colossalai.nn.optimizer.cpu_adam import CPUAdam
 from titans.model.gpt import gpt2_small
-from tqdm import tqdm
 
 from tensornvme import DiskOffloader
 
@@ -161,23 +160,19 @@ def test_adam():
         {'n_entries': 1, 'backend': None, 'prefetch': 0, 'vecio': False},
 
         {'n_entries': 1, 'backend': 'uring', 'prefetch': 0, 'vecio': False},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 1, 'vecio': False},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 4, 'vecio': False},
+        {'n_entries': 8, 'backend': 'uring', 'prefetch': 2, 'vecio': False},
 
         {'n_entries': 1, 'backend': 'uring', 'prefetch': 0, 'vecio': True},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 1, 'vecio': True},
-        {'n_entries': 8, 'backend': 'uring', 'prefetch': 4, 'vecio': True},
+        {'n_entries': 8, 'backend': 'uring', 'prefetch': 2, 'vecio': True},
 
         {'n_entries': 1, 'backend': 'aio', 'prefetch': 0, 'vecio': False},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 1, 'vecio': False},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 4, 'vecio': False},
+        {'n_entries': 8, 'backend': 'aio', 'prefetch': 2, 'vecio': False},
 
         {'n_entries': 1, 'backend': 'aio', 'prefetch': 0, 'vecio': True},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 1, 'vecio': True},
-        {'n_entries': 8, 'backend': 'aio', 'prefetch': 4, 'vecio': True},
+        {'n_entries': 8, 'backend': 'aio', 'prefetch': 2, 'vecio': True},
     ]
 
-    for i, cfg in tqdm(enumerate(test_config), total=len(test_config)):
+    for i, cfg in enumerate(test_config):
         params_test = copy.deepcopy(params)
         for _, p in enumerate(params_test):
             if p.grad is None and p.requires_grad:
@@ -194,7 +189,6 @@ def test_adam():
         for p1, p2, p3 in zip(params_gt, params_test, params):
             assert torch.equal(p1, p2)
             assert not torch.equal(p1, p3)
-    print('All tests pass!')
 
 
 if __name__ == '__main__':
