@@ -171,3 +171,13 @@ We also have python unit tests. Make sure you have installed `pytest`. To run:
 ```shell
 pytest ./tests
 ```
+
+### How to benchmark
+
+We have benchmarks for `Adam` and `CpuAdam`  with different backend and prefetch depth to validate TensorNVME's speed. To run the benchmark:
+
+```shell
+cd benchmark
+python benchmark_adam.py
+python benchmark_cpuadam.py
+```
