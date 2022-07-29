@@ -3,9 +3,15 @@ import math
 from typing import Optional
 
 import torch
-from titans.model.gpt import gpt2_small
+from titans.model.gpt import GPT
 
 from tensornvme import DiskOffloader
+
+
+def gpt2_toy(**kwargs):
+    model_kwargs = dict(hidden_size=8, depth=2, num_heads=2, **kwargs)
+    model = GPT(**model_kwargs)
+    return model
 
 
 def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps=1e-12):
@@ -125,7 +131,7 @@ class Adam(torch.optim.Optimizer):
 
 
 def test_adam():
-    params = list(gpt2_small().cpu().parameters())
+    params = list(gpt2_toy().cpu().parameters())
     for _, p in enumerate(params):
         if p.grad is None and p.requires_grad:
             p.grad = torch.ones_like(p.data, dtype=torch.float) * 0.12345
