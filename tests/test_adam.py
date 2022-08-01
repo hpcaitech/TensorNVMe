@@ -28,7 +28,6 @@ def gpt2_toy():
     return GPTLMModel(hidden_size=8, num_layers=2, num_attention_heads=2, checkpoint=False)
 
 
-@torch.no_grad()
 def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps=1e-12):
     exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
     exp_avg_sq.mul_(beta2).addcmul_(grad, grad.conj(), value=1 - beta2)
@@ -181,6 +180,7 @@ class Adam(torch.optim.Optimizer):
         return loss
 
 
+@torch.no_grad()
 def test_adam():
     params = list(gpt2_toy().cpu().parameters())
     for _, p in enumerate(params):
@@ -230,5 +230,4 @@ def test_adam():
 
 
 if __name__ == '__main__':
-    with torch.no_grad():
-        test_adam()
+    test_adam()
