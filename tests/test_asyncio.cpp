@@ -25,203 +25,14 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
             new AIOAsyncIO(1),
             new AIOAsyncIO(10),
             new AIOAsyncIO(100),
-            new AIOAsyncIO(1000),
             new UringAsyncIO(1),
             new UringAsyncIO(10),
             new UringAsyncIO(100),
-            new UringAsyncIO(1000),
     };
-    auto aio_idx = GENERATE(range(0, 8));
+    auto aio_idx = GENERATE(range(0, 6));
     auto aio = aios[aio_idx];
     string aio_str = to_string(aio_idx);
 
-    SECTION("write char array to a file" + aio_str) {
-        int fd = open("./tmp_test", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        char text[5][18] = {"TEST ME AGAIN!!!\n", "TEST ME AGAIN!!!\n", "TEST ME AGAIN!!!\n",
-                            "TEST ME AGAIN!!!\n",
-                            "TEST ME AGAIN!!!\n"};
-        size_t len = strlen(text[0]) + 1;
-        int n = 0;
-        for (int i = 0; i < 5; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            aio->write(fd, text[i], len, i * len, fn);
-        }
-        aio->sync_write_events();
-        REQUIRE(n == 5);
-
-        char new_text[5][18];
-        read(fd, new_text, 5 * 18 * sizeof(char));
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 18; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./tmp_test");
-    }
-    SECTION("read char array from a file" + aio_str) {
-        int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        char text[5][18] = {"TEST ME AGAIN!!!\n", "TEST ME AGAIN!!!\n", "TEST ME AGAIN!!!\n",
-                            "TEST ME AGAIN!!!\n",
-                            "TEST ME AGAIN!!!\n"};
-        write(fd, text, 5 * 18 * sizeof(char));
-
-        char new_text[5][18];
-        size_t len = strlen(text[0]) + 1;
-        int n = 0;
-        for (int i = 0; i < 5; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            aio->read(fd, new_text[i], len, i * len, fn);
-        }
-        aio->sync_read_events();
-        REQUIRE(n == 5);
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 18; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./test.txt");
-    }
-    SECTION("read and write char array to a file" + aio_str) {
-        int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        const int n_loop = 5, n_len = 18;
-
-        char text[n_loop][n_len];
-
-        int n = 0, offset = 0;
-        size_t len;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            //len = strlen(text[i]) + 1;
-            len = n_len;
-            aio->write(fd, text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_write_events();
-
-        char new_text[n_loop][n_len];
-        n = 0, offset = 0;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            len = n_len;
-            aio->read(fd, new_text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_read_events();
-        for (int i = 0; i < n_loop; i++) {
-            for (int j = 0; j < n_len; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./test.txt");
-    }
-    SECTION("read and write none char array to a file" + aio_str) {
-        int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-
-        const int n_loop = 0, n_len = 0;
-
-        char text[n_loop][n_len];
-
-        int n = 0, offset = 0;
-        size_t len;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            //len = strlen(text[i]) + 1;
-            len = n_len;
-            aio->write(fd, text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_write_events();
-
-        char new_text[n_loop][n_len];
-        n = 0, offset = 0;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            len = n_len;
-            aio->read(fd, new_text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_read_events();
-        for (int i = 0; i < n_loop; i++) {
-            for (int j = 0; j < n_len; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./test.txt");
-    }
-    SECTION("read and write small char array to a file" + aio_str) {
-        int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        const int n_loop = 1, n_len = 1;
-
-        char text[n_loop][n_len];
-
-        int n = 0, offset = 0;
-        size_t len;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            //len = strlen(text[i]) + 1;
-            len = n_len;
-            aio->write(fd, text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_write_events();
-        REQUIRE(n == n_loop);
-
-        char new_text[n_loop][n_len];
-        n = 0, offset = 0;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            len = n_len;
-            aio->read(fd, new_text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_read_events();
-        REQUIRE(n == n_loop);
-        for (int i = 0; i < n_loop; i++) {
-            for (int j = 0; j < n_len; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./test.txt");
-    }
-    SECTION("read and write large char array to a file" + aio_str) {
-        int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        const int n_loop = 1000, n_len = 1000;
-
-        char text[n_loop][n_len];
-
-        int n = 0, offset = 0;
-        size_t len;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            //len = strlen(text[i]) + 1;
-            len = n_len;
-            aio->write(fd, text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_write_events();
-
-        char new_text[n_loop][n_len];
-        n = 0, offset = 0;
-        for (int i = 0; i < n_loop; i++) {
-            auto fn = std::bind(callback_n, std::ref(n));
-            len = n_len;
-            aio->read(fd, new_text[i], len, offset, fn);
-            offset += len;
-        }
-        aio->sync_read_events();
-        for (int i = 0; i < n_loop; i++) {
-            for (int j = 0; j < n_len; j++) {
-                REQUIRE(text[i][j] == new_text[i][j]);
-            }
-        }
-        close(fd);
-        remove("./test.txt");
-    }
     SECTION("read and write double array to a file" + aio_str) {
         int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
         const int n_loop = 5, n_len = 18;
@@ -323,7 +134,7 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
     }
     SECTION("read and write large double array to a file" + aio_str) {
         int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        const int n_loop = 100, n_len = 1000;
+        const int n_loop = 200, n_len = 50;
 
         double data1[n_loop][n_len];
         int n = 0, offset = 0;
@@ -477,7 +288,7 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
         }
     }
     SECTION("read and write large double array to multiple files" + aio_str) {
-        const int n_loop = 500, n_len = 500;
+        const int n_loop = 150, n_len = 100;
         double data1[n_loop][n_len];
         int n = 0, offset = 0;
         size_t len;
