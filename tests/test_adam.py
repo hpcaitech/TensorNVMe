@@ -28,6 +28,7 @@ def gpt2_toy():
     return GPTLMModel(hidden_size=8, num_layers=2, num_attention_heads=2, checkpoint=False)
 
 
+@torch.no_grad()
 def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps=1e-12):
     exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
     exp_avg_sq.mul_(beta2).addcmul_(grad, grad.conj(), value=1 - beta2)
@@ -37,7 +38,7 @@ def adam(step, lr, param, grad, exp_avg, exp_avg_sq, beta1=0.9, beta2=0.999, eps
     step_size = lr / bias_correction1
     bias_correction2_sqrt = math.sqrt(bias_correction2)
     denom = (exp_avg_sq.sqrt() / bias_correction2_sqrt).add_(eps)
-    param.data = param.addcdiv(exp_avg, denom, value=-step_size).data
+    param.addcdiv_(exp_avg, denom, value=-step_size)
 
 
 class NVMEAdam(torch.optim.Optimizer):
