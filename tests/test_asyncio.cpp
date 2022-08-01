@@ -23,11 +23,11 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
 
     AsyncIO *aios[] = {
             new AIOAsyncIO(1),
-            new AIOAsyncIO(10),
-            new AIOAsyncIO(100),
+            new AIOAsyncIO(8),
+            new AIOAsyncIO(16),
             new UringAsyncIO(1),
-            new UringAsyncIO(10),
-            new UringAsyncIO(100),
+            new UringAsyncIO(8),
+            new UringAsyncIO(16),
     };
     auto aio_idx = GENERATE(range(0, 6));
     auto aio = aios[aio_idx];
@@ -134,7 +134,7 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
     }
     SECTION("read and write large double array to a file" + aio_str) {
         int fd = open("./test.txt", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-        const int n_loop = 200, n_len = 50;
+        const int n_loop = 50, n_len = 50;
 
         double data1[n_loop][n_len];
         int n = 0, offset = 0;
@@ -288,7 +288,7 @@ TEST_CASE( "Test async io fucntion of libaio and liburing") {
         }
     }
     SECTION("read and write large double array to multiple files" + aio_str) {
-        const int n_loop = 150, n_len = 100;
+        const int n_loop = 50, n_len = 50;
         double data1[n_loop][n_len];
         int n = 0, offset = 0;
         size_t len;
