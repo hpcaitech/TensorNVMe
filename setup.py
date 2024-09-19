@@ -20,17 +20,27 @@ def check_uring_compatibility():
     kernel_version = version.parse(uname_info.release.split("-")[0])
     return kernel_version >= version.parse("5.10")
 
+def check_pthread_compatibility():
+    uname_info = uname()
+    if uname_info.system != "Linux":
+        raise RuntimeError("Only Linux is supported")
+    return True
+
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 backend_install_dir = os.path.join(os.path.expanduser("~"), ".tensornvme")
 
 enable_uring = True
 enable_aio = True
+enable_pthread = True
 if os.environ.get("DISABLE_URING") == "1" or not check_uring_compatibility():
     enable_uring = False
 if os.environ.get("DISABLE_AIO") == "1":
     enable_aio = False
-assert enable_aio or enable_uring
+if os.environ.get("DISABLE_PTHREAD") == "1" or not check_pthread_compatibility():
+    enable_pthread=False
+
+assert enable_aio or enable_uring or enable_pthread
 if os.environ.get("WITH_ROOT") == "1":
     backend_install_dir = "/usr"
     if not os.access(backend_install_dir, os.W_OK):
@@ -45,6 +55,8 @@ sources = [
     "csrc/backend.cpp",
     "csrc/async_file_io.cpp",
     "csrc/py_api.cpp",
+    "csrc/pthread_backend.cpp",
+    "csrc/threadpool.cpp"
 ]
 extra_objects = []
 define_macros = []
@@ -77,7 +89,7 @@ def cpp_ext_helper(name, sources, **kwargs):
 
 def find_static_lib(lib_name: str, lib_paths: List[str] = []) -> str:
     static_lib_name = f"lib{lib_name}.a"
-    lib_paths.extend(["/usr/lib", "/usr/lib64"])
+    lib_paths.extend(["/usr/lib", "/usr/lib64", "/usr/lib/x86_64-linux-gnu/"])
     if os.environ.get("LIBRARY_PATH", None) is not None:
         lib_paths.extend(os.environ["LIBRARY_PATH"].split(":"))
     for lib_dir in lib_paths:

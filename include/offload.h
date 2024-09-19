@@ -1,6 +1,8 @@
 #pragma once
 
+#include "asyncio.h"
 #include <ATen/ATen.h>
+
 #include "space_mgr.h"
 #ifndef DISABLE_URING
 #include "uring.h"

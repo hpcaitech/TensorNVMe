@@ -29,10 +29,6 @@
 #ifndef _THREADPOOL_H_
 #define _THREADPOOL_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file threadpool.h
  * @brief Threadpool Header File
@@ -93,9 +89,5 @@ int threadpool_add(threadpool_t *pool, void (*routine)(void *),
  * processes all pending tasks before shutdown.
  */
 int threadpool_destroy(threadpool_t *pool, int flags);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _THREADPOOL_H_ */
