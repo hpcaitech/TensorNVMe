@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-AsyncFileIO::AsyncFileIO(int fd, unsigned int n_entries) : fd(fd)
+AsyncFileWriter::AsyncFileWriter(int fd, unsigned int n_entries) : fd(fd)
 {
     for (const std::string &backend : get_backends())
     {
@@ -16,22 +16,18 @@ AsyncFileIO::AsyncFileIO(int fd, unsigned int n_entries) : fd(fd)
     throw std::runtime_error("No asyncio backend is installed");
 }
 
-void AsyncFileIO::write(void *buffer, size_t n_bytes, unsigned long long offset)
+void AsyncFileWriter::write(size_t buffer, size_t n_bytes, unsigned long long offset)
 {
-    this->aio->write(this->fd, buffer, n_bytes, offset, nullptr);
+    void *ptr = reinterpret_cast<void *>(buffer);
+    this->aio->write(this->fd, ptr, n_bytes, offset, nullptr);
 }
 
-void AsyncFileIO::read(void *buffer, size_t n_bytes, unsigned long long offset)
-{
-    this->aio->read(this->fd, buffer, n_bytes, offset, nullptr);
-}
-
-void AsyncFileIO::synchronize()
+void AsyncFileWriter::synchronize()
 {
     this->aio->synchronize();
 }
 
-AsyncFileIO::~AsyncFileIO()
+AsyncFileWriter::~AsyncFileWriter()
 {
     delete this->aio;
 }

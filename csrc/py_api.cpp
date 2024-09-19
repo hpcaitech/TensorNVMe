@@ -24,9 +24,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def("sync_readv", &Offloader::sync_readv, py::arg("tensors"), py::arg("key"));
     m.def("get_backends", get_backends);
     m.def("probe_backend", probe_backend, py::arg("backend"));
-    py::class_<AsyncFileIO>(m, "AsyncFileIO")
+    py::class_<AsyncFileWriter>(m, "AsyncFileWriter")
         .def(py::init<int, unsigned int>(), py::arg("fd"), py::arg("n_entries"))
-        .def("write", &AsyncFileIO::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"))
-        .def("read", &AsyncFileIO::read, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"))
-        .def("synchronize", &AsyncFileIO::synchronize);
+        .def("write", &AsyncFileWriter::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"))
+        .def("synchronize", &AsyncFileWriter::synchronize);
 }

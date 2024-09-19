@@ -7,14 +7,13 @@
 #include "aio.h"
 #endif
 
-class AsyncFileIO
+class AsyncFileWriter
 {
 public:
-    AsyncFileIO(int fd, unsigned int n_entries);
-    void write(void *buffer, size_t n_bytes, unsigned long long offset);
-    void read(void *buffer, size_t n_bytes, unsigned long long offset);
+    AsyncFileWriter(int fd, unsigned int n_entries);
+    void write(size_t buffer, size_t n_bytes, unsigned long long offset);
     void synchronize();
-    ~AsyncFileIO();
+    ~AsyncFileWriter();
 
 private:
     int fd;
