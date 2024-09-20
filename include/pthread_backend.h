@@ -6,20 +6,10 @@
 #include "threadpool.h"
 
 
-enum thaio_op_code_t {
-    THAIO_READ,
-    THAIO_READV,
-    THAIO_WRITE,
-    THAIO_WRITEV,
-    THAIO_FSYNC,
-    THAIO_FDSYNC,
-    THAIO_NOOP,
-};
-
 static const unsigned int CTX_POOL_SIZE_DEFAULT = 8;
 static const unsigned int CTX_MAX_REQUESTS_DEFAULT = 512;
 
-class AIOOperation;
+class PthradIOData;
 
 class AIOContext {
 public:
@@ -46,9 +36,9 @@ public:
     }
 
 
-    void submit(AIOOperation &op);
+    void submit(PthradIOData *op);
 
-    static void worker(AIOOperation &op);
+    static void worker(void *op);
 
 private:
     threadpool_t *pool;
@@ -58,12 +48,12 @@ private:
 };
 
 // data class
-class AIOOperation {
+class PthradIOData: IOData {
     friend class AIOContext;
 
 public:
-    AIOOperation(
-        const thaio_op_code_t opcode_,
+    PthradIOData(
+        const IOType type_,
         const int fileno_,
         const unsigned long long offset_,
         const unsigned long long buf_size_,
@@ -71,7 +61,7 @@ public:
         const iovec *iov_,
         const callback_t callback_
     )
-        : opcode(opcode_)
+        : IOData(type_, callback_, iov_)
         , fileno(fileno_)
         , offset(offset_)
         , result(-1)
@@ -79,13 +69,10 @@ public:
         , in_progress(false)
         , buf_size(buf_size_)
         , buf(buf_)
-        , iov(iov_)
-        , callback(callback_)
     {}
 
-    ~AIOOperation() = default;
+    ~PthradIOData() = default;  // release iov_ by calling parent destructor
 private:
-    const thaio_op_code_t opcode;
     const int fileno;
     const unsigned long long offset;
     int result;
@@ -93,8 +80,6 @@ private:
     bool in_progress;
     const unsigned long long buf_size;
     void* buf;
-    const iovec *iov;
-    const callback_t callback;
 };
 
 
@@ -121,6 +106,6 @@ public:
     void sync_write_events();
     void sync_read_events();
     void synchronize();
-    
+
     void register_file(int fd);
 };

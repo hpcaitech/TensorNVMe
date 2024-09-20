@@ -8,58 +8,49 @@
 #include "pthread_backend.h"
 
 
-void AIOContext::worker(AIOOperation &op) {
+void AIOContext::worker(void *op_) {
+    PthradIOData *op = reinterpret_cast<PthradIOData *>(op_);
 
-    if (op.opcode == THAIO_NOOP) {
-        return;
-    }
-
-    int fileno = op.fileno;
-    off_t offset = op.offset;
-    int buf_size = op.buf_size;
-    void* buf = op.buf;
-    const iovec* iov = op.iov;
-    const callback_t cb = op.callback;
+    int fileno = op->fileno;
+    off_t offset = op->offset;
+    int buf_size = op->buf_size;
+    void* buf = op->buf;
+    const iovec* iov = op->iov;
+    const callback_t cb = op->callback;
 
     int result;
 
-    switch (op.opcode) {
-        case THAIO_WRITE:
+    switch (op->type) {
+        case WRITE:
             result = pwrite(fileno, buf, buf_size, offset);
             break;
-        case THAIO_WRITEV:
+        case WRITEV:
             result = pwritev(fileno, iov, buf_size, offset);
             break;
-        case THAIO_FSYNC:
-            result = fsync(fileno);
-            break;
-        case THAIO_FDSYNC:
-            result = fdatasync(fileno);
-            break;
-        case THAIO_READ:
+        case READ:
             result = pread(fileno, buf, buf_size, offset);
             break;
-        case THAIO_READV:
+        case READV:
             result = preadv(fileno, iov, buf_size, offset);
             break;
     }
 
-    op.result = result;
+    op->result = result;
 
     if (cb != nullptr) {
         cb();
     }
 
-    if (result < 0) op.error = errno;
+    if (result < 0) op->error = errno;
 
 }
 
-void AIOContext::submit(AIOOperation &op) {
-    op.in_progress = true;
+void AIOContext::submit(PthradIOData *op) {
+    op->in_progress = true;
     int result = threadpool_add(
         this->pool,
-        reinterpret_cast<void (*)(void *)>(AIOContext::worker),
-        nullptr, // reinterpret_cast<void *>(&op), // TODO @botbw OP RAII?
+        AIOContext::worker,
+        static_cast<void *>(op),
         0
     );
     if (result < 0) {
@@ -68,8 +59,8 @@ void AIOContext::submit(AIOOperation &op) {
 }
 
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
-    AIOOperation op(
-        THAIO_WRITE,
+    PthradIOData *op = new PthradIOData(
+        WRITE,
         fd,
         offset,
         n_bytes,
@@ -81,8 +72,8 @@ void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long l
 }
 
 void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
-    AIOOperation op(
-        THAIO_READ,
+    PthradIOData *op = new PthradIOData(
+        READ,
         fd,
         offset,
         n_bytes,
@@ -95,8 +86,8 @@ void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long lo
 
 
 void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-        AIOOperation op(
-        THAIO_WRITEV,
+        PthradIOData *op = new PthradIOData(
+        WRITEV,
         fd,
         offset,
         static_cast<unsigned long long>(iovcnt),
@@ -108,8 +99,8 @@ void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsig
 }
 
 void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-        AIOOperation op(
-        THAIO_READV,
+        PthradIOData *op = new PthradIOData(
+        READV,
         fd,
         offset,
         static_cast<unsigned long long>(iovcnt),
@@ -122,6 +113,7 @@ void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsign
 
 void PthreadAsyncIO::get_event(WaitType wt) {
     throw std::runtime_error("not implemented");
+    // TODO @botbw: release PthreadIOData here
 }
 
 void PthreadAsyncIO::sync_write_events() {
