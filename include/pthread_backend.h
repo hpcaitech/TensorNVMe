@@ -68,7 +68,8 @@ public:
         const unsigned long long offset_,
         const unsigned long long buf_size_,
         void* buf_,
-        const iovec *iov_
+        const iovec *iov_,
+        const callback_t callback_
     )
         : opcode(opcode_)
         , fileno(fileno_)
@@ -79,6 +80,7 @@ public:
         , buf_size(buf_size_)
         , buf(buf_)
         , iov(iov_)
+        , callback(callback_)
     {}
 
     ~AIOOperation() = default;
@@ -92,6 +94,7 @@ private:
     const unsigned long long buf_size;
     void* buf;
     const iovec *iov;
+    const callback_t callback;
 };
 
 

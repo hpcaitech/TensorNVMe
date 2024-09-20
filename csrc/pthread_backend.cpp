@@ -19,6 +19,7 @@ void AIOContext::worker(AIOOperation &op) {
     int buf_size = op.buf_size;
     void* buf = op.buf;
     const iovec* iov = op.iov;
+    const callback_t cb = op.callback;
 
     int result;
 
@@ -45,6 +46,10 @@ void AIOContext::worker(AIOOperation &op) {
 
     op.result = result;
 
+    if (cb != nullptr) {
+        cb();
+    }
+
     if (result < 0) op.error = errno;
 
 }
@@ -69,7 +74,8 @@ void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long l
         offset,
         n_bytes,
         buffer,
-        nullptr
+        nullptr,
+        callback
     );
     this->ctx.submit(op);
 }
@@ -81,7 +87,8 @@ void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long lo
         offset,
         n_bytes,
         buffer,
-        nullptr
+        nullptr,
+        callback
     );
     this->ctx.submit(op);
 }
@@ -94,7 +101,8 @@ void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsig
         offset,
         static_cast<unsigned long long>(iovcnt),
         nullptr,
-        iov
+        iov,
+        callback
     );
     this->ctx.submit(op);
 }
@@ -106,7 +114,8 @@ void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsign
         offset,
         static_cast<unsigned long long>(iovcnt),
         nullptr,
-        iov
+        iov,
+        callback
     );
     this->ctx.submit(op);
 }
