@@ -17,6 +17,7 @@ void AIOContext::worker(void *op_) {
     void* buf = op->buf;
     const iovec* iov = op->iov;
     const callback_t cb = op->callback;
+    std::atomic<unsigned int> *p_cnt = op->p_cnt;
 
     int result;
 
@@ -33,20 +34,22 @@ void AIOContext::worker(void *op_) {
         case READV:
             result = preadv(fileno, iov, buf_size, offset);
             break;
+        default:
+            throw std::runtime_error("Unkown task");
     }
-
-    op->result = result;
 
     if (cb != nullptr) {
         cb();
     }
 
-    if (result < 0) op->error = errno;
+    if (result < 0) {
+        throw std::runtime_error("Error when executing tasks");
+    }
 
+    p_cnt->fetch_sub(1);
 }
 
 void AIOContext::submit(PthradIOData *op) {
-    op->in_progress = true;
     int result = threadpool_add(
         this->pool,
         AIOContext::worker,
@@ -58,7 +61,23 @@ void AIOContext::submit(PthradIOData *op) {
     }
 }
 
+int PthreadAsyncIO::getEnvValue(const char* varName, int defaultValue) {
+    const char* envVar = std::getenv(varName);
+    if (envVar != nullptr) {
+        std::stringstream ss(envVar);
+        int value;
+        // Try converting to an integer
+        if (ss >> value) {
+            return value;
+        } else {
+            throw std::runtime_error("Failed to parse integer environ");
+        }
+    }
+    return defaultValue;
+}
+
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
+    this->n_write_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         WRITE,
         fd,
@@ -66,12 +85,14 @@ void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long l
         n_bytes,
         buffer,
         nullptr,
-        callback
+        callback,
+        &this->n_write_events
     );
     this->ctx.submit(op);
 }
 
 void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
+    this->n_read_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         READ,
         fd,
@@ -79,53 +100,62 @@ void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long lo
         n_bytes,
         buffer,
         nullptr,
-        callback
+        callback,
+        &this->n_read_events
     );
     this->ctx.submit(op);
 }
 
 
 void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-        PthradIOData *op = new PthradIOData(
+    this->n_write_events.fetch_add(1);
+    PthradIOData *op = new PthradIOData(
         WRITEV,
         fd,
         offset,
         static_cast<unsigned long long>(iovcnt),
         nullptr,
         iov,
-        callback
+        callback,
+        &this->n_write_events
     );
     this->ctx.submit(op);
 }
 
 void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-        PthradIOData *op = new PthradIOData(
+    this->n_read_events.fetch_add(1);
+    PthradIOData *op = new PthradIOData(
         READV,
         fd,
         offset,
         static_cast<unsigned long long>(iovcnt),
         nullptr,
         iov,
-        callback
+        callback,
+        &this->n_read_events
     );
     this->ctx.submit(op);
 }
 
 void PthreadAsyncIO::get_event(WaitType wt) {
-    throw std::runtime_error("not implemented");
-    // TODO @botbw: release PthreadIOData here
+    if (wt == NOWAIT) return;
+    // busy waiting
+    while (
+        this->n_write_events.load() != 0
+        || this->n_read_events.load() != 0
+    ) {}
 }
 
 void PthreadAsyncIO::sync_write_events() {
-    throw std::runtime_error("not implemented");
+    while (this->n_write_events.load() != 0) {}
 }
 
 void PthreadAsyncIO::sync_read_events() {
-    throw std::runtime_error("not implemented");
+    while (this->n_read_events.load() != 0) {}
 }
 
 void PthreadAsyncIO::synchronize() {
-    throw std::runtime_error("not implemented");
+    this->get_event(WAIT);
 }
 
 void PthreadAsyncIO::register_file(int fd) {}

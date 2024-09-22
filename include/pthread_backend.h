@@ -5,6 +5,7 @@
 #include <sys/io.h>
 #include <cstdlib>
 #include <sstream>
+#include <atomic>
 #include "asyncio.h"
 #include "threadpool.h"
 
@@ -14,17 +15,15 @@ static const char* PTHREAD_POOL_SIZE_ENVIRON_NAME = "PTHREAD_POOL_SIZE";
 
 class PthradIOData;
 
+// thread pool wrapper
 class AIOContext {
 public:
     AIOContext(
-        unsigned int max_requests_,
-        unsigned int pool_size_
+        unsigned int max_requests,
+        unsigned int pool_size
     ) 
-        : pool(nullptr)
-        , max_requests(max_requests_)
-        , pool_size(pool_size_)
+        : pool(threadpool_create(max_requests, pool_size, 0))
     {
-        this->pool = threadpool_create(this->pool_size, this->max_requests, 0);
         if (this->pool == nullptr) {
             throw std::runtime_error("failed to allocate thread pool");
         }
@@ -44,9 +43,6 @@ public:
 
 private:
     threadpool_t *pool;
-    unsigned int max_requests;
-    unsigned int pool_size;
-
 };
 
 // data class
@@ -61,27 +57,25 @@ public:
         const unsigned long long buf_size_,
         void* buf_,
         const iovec *iov_,
-        const callback_t callback_
+        const callback_t callback_,
+        std::atomic<unsigned int> *p_cnt_
     )
         : IOData(type_, callback_, iov_)
         , fileno(fileno_)
         , offset(offset_)
-        , result(-1)
-        , error(0)
-        , in_progress(false)
         , buf_size(buf_size_)
         , buf(buf_)
+        , p_cnt(p_cnt_)
     {}
 
     ~PthradIOData() = default;  // release iov_ by calling parent destructor
+
 private:
     const int fileno;
     const unsigned long long offset;
-    int result;
-    int error;
-    bool in_progress;
     const unsigned long long buf_size;
     void* buf;
+    std::atomic<unsigned int> *p_cnt;
 };
 
 
@@ -89,22 +83,10 @@ class PthreadAsyncIO : public AsyncIO
 {
 private:
     AIOContext ctx;
+    std::atomic<unsigned int> n_write_events;  // atomic is needed here since this value could be updated by multiple threads
+    std::atomic<unsigned int> n_read_events;   // atomic is needed here since this value could be updated by multiple threads
 
-    static int getEnvValue(const char* varName, int defaultValue) {
-        const char* envVar = std::getenv(varName);
-        if (envVar != nullptr) {
-            std::stringstream ss(envVar);
-            int value;
-            // Try converting to an integer
-            if (ss >> value) {
-                return value;
-            } else {
-                throw std::runtime_error("Failed to parse integer environ");
-            }
-        }
-        return defaultValue;
-    }
-
+    static int getEnvValue(const char* varName, int defaultValue);
 public:
     PthreadAsyncIO(unsigned int n_entries)
         : ctx(
@@ -113,7 +95,9 @@ public:
                 PTHREAD_POOL_SIZE_ENVIRON_NAME,
                 PTHREAD_POOL_SIZE_DEFAULT
             )
-        ) {}
+        )
+        , n_write_events(0)
+        , n_read_events(0) {}
 
     ~PthreadAsyncIO() = default;
 
