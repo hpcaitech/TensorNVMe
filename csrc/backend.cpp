@@ -88,7 +88,7 @@ void probe_asyncio(const std::string &backend)
         for (int i = 0; i < n_loop; i++)
         {
             for (int j = 0; j < n_len; j++)
-            {
+            {   
                 assert(text[i][j] == new_text[i][j]);
             }
         }

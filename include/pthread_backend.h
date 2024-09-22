@@ -19,10 +19,10 @@ class PthradIOData;
 class AIOContext {
 public:
     AIOContext(
-        unsigned int max_requests,
-        unsigned int pool_size
+        unsigned int pool_size,
+        unsigned int n_entries
     ) 
-        : pool(threadpool_create(max_requests, pool_size, 0))
+        : pool(threadpool_create(pool_size, n_entries, 0))
     {
         if (this->pool == nullptr) {
             throw std::runtime_error("failed to allocate thread pool");
@@ -33,7 +33,7 @@ public:
         if (this->pool != nullptr) {
             threadpool_t* pool = this->pool;
             this->pool = nullptr;
-            threadpool_destroy(pool, 0);  // wait all threads
+            threadpool_destroy(pool, 1);  // wait all threads
         }
     }
 
@@ -90,11 +90,11 @@ private:
 public:
     PthreadAsyncIO(unsigned int n_entries)
         : ctx(
-            n_entries,
             getEnvValue(
                 PTHREAD_POOL_SIZE_ENVIRON_NAME,
                 PTHREAD_POOL_SIZE_DEFAULT
-            )
+            ),
+            n_entries
         )
         , n_write_events(0)
         , n_read_events(0) {}

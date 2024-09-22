@@ -1,5 +1,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <torch/extension.h>
 #include "offload.h"
 #include "async_file_io.h"
 #include "backend.h"

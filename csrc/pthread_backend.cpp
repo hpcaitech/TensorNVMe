@@ -19,7 +19,7 @@ void AIOContext::worker(void *op_) {
     const callback_t cb = op->callback;
     std::atomic<unsigned int> *p_cnt = op->p_cnt;
 
-    int result;
+    int result = -1;
 
     switch (op->type) {
         case WRITE:
@@ -47,15 +47,20 @@ void AIOContext::worker(void *op_) {
     }
 
     p_cnt->fetch_sub(1);
+    delete op;
 }
 
 void AIOContext::submit(PthradIOData *op) {
-    int result = threadpool_add(
-        this->pool,
-        AIOContext::worker,
-        static_cast<void *>(op),
-        0
-    );
+    int result;
+    do {
+        result = threadpool_add(
+            this->pool,
+            AIOContext::worker,
+            static_cast<void *>(op),
+            0
+        );
+    } while (result == threadpool_queue_full);
+
     if (result < 0) {
         throw std::runtime_error("error when submitting job");
     }
