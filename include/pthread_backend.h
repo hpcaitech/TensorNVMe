@@ -1,13 +1,16 @@
 #pragma once
 
+#include <list>
 #include <stdexcept>
 #include <sys/io.h>
+#include <cstdlib>
+#include <sstream>
 #include "asyncio.h"
 #include "threadpool.h"
 
 
-static const unsigned int CTX_POOL_SIZE_DEFAULT = 8;
-static const unsigned int CTX_MAX_REQUESTS_DEFAULT = 512;
+static const unsigned int PTHREAD_POOL_SIZE_DEFAULT = 8;
+static const char* PTHREAD_POOL_SIZE_ENVIRON_NAME = "PTHREAD_POOL_SIZE";
 
 class PthradIOData;
 
@@ -31,10 +34,9 @@ public:
         if (this->pool != nullptr) {
             threadpool_t* pool = this->pool;
             this->pool = nullptr;
-            threadpool_destroy(pool, 0);
+            threadpool_destroy(pool, 0);  // wait all threads
         }
     }
-
 
     void submit(PthradIOData *op);
 
@@ -87,13 +89,31 @@ class PthreadAsyncIO : public AsyncIO
 {
 private:
     AIOContext ctx;
-    
+
+    static int getEnvValue(const char* varName, int defaultValue) {
+        const char* envVar = std::getenv(varName);
+        if (envVar != nullptr) {
+            std::stringstream ss(envVar);
+            int value;
+            // Try converting to an integer
+            if (ss >> value) {
+                return value;
+            } else {
+                throw std::runtime_error("Failed to parse integer environ");
+            }
+        }
+        return defaultValue;
+    }
 
 public:
-    PthreadAsyncIO(
-        unsigned int max_requests = CTX_MAX_REQUESTS_DEFAULT,
-        unsigned int pool_size = CTX_POOL_SIZE_DEFAULT
-    ): ctx(max_requests, pool_size) {}
+    PthreadAsyncIO(unsigned int n_entries)
+        : ctx(
+            n_entries,
+            getEnvValue(
+                PTHREAD_POOL_SIZE_ENVIRON_NAME,
+                PTHREAD_POOL_SIZE_DEFAULT
+            )
+        ) {}
 
     ~PthreadAsyncIO() = default;
 

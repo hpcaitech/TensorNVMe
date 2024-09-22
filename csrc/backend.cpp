@@ -136,7 +136,7 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
 #endif
 #ifndef DISABLE_PTHREAD
     if (backend == "pthread")
-        throw std::runtime_error("not implemented: " + backend);
+        return new PthreadAsyncIO(n_entries);
 #endif
     throw std::runtime_error("Unsupported backend: " + backend);
 }
