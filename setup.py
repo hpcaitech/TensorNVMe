@@ -57,7 +57,6 @@ sources = [
     "csrc/async_file_io.cpp",
     "csrc/py_api.cpp",
     "csrc/pthread_backend.cpp",
-    "csrc/threadpool.cpp"
 ]
 extra_objects = []
 define_macros = []
