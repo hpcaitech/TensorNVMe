@@ -8,7 +8,7 @@ using callback_t = std::function<void()>;
 enum IOType
 {
     WRITE,
-    READ,
+    READ
 };
 
 enum WaitType

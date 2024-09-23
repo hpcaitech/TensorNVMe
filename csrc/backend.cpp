@@ -53,12 +53,14 @@ void probe_asyncio(const std::string &backend)
 #else
             throw std::runtime_error("backend aio is not installed\n");
 #endif
-        } else {
+        } else if (backend == "pthread") {
 #ifndef DISABLE_PTHREAD
             aio.reset(new PthreadAsyncIO(2));
 #else
             throw std::runtime_error("backend pthread is not installed\n");
 #endif
+        } else {
+            throw std::runtime_error("unknown backend");
         }
 
         int fd = fileno(fp);
@@ -88,7 +90,7 @@ void probe_asyncio(const std::string &backend)
         for (int i = 0; i < n_loop; i++)
         {
             for (int j = 0; j < n_len; j++)
-            {   
+            {
                 assert(text[i][j] == new_text[i][j]);
             }
         }
