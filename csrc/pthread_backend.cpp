@@ -7,6 +7,17 @@
 #include "threadpool.h"
 #include "pthread_backend.h"
 
+#ifdef DEBUG
+#include <iostream>
+#include <mutex>
+std::mutex cout_mutex;
+
+template<typename... Args>
+void thread_safe_cout(Args&&... args) {
+    std::lock_guard<std::mutex> guard(cout_mutex);
+    (std::cout << ... << args) << std::endl;
+}
+#endif
 
 void AIOContext::worker(void *op_) {
     PthradIOData *op = reinterpret_cast<PthradIOData *>(op_);
@@ -47,6 +58,9 @@ void AIOContext::worker(void *op_) {
     }
 
     p_cnt->fetch_sub(1);
+#ifdef DEBUG
+    thread_safe_cout("worker_end:", op->type, ":", p_cnt->load());
+#endif
     delete op;
 }
 
@@ -82,7 +96,6 @@ int PthreadAsyncIO::getEnvValue(const char* varName, int defaultValue) {
 }
 
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
-    this->n_write_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         WRITE,
         fd,
@@ -93,11 +106,14 @@ void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long l
         callback,
         &this->n_write_events
     );
+    this->n_write_events.fetch_add(1);
     this->ctx.submit(op);
+#ifdef DEBUG
+    thread_safe_cout("write:",this->n_write_events.load());
+#endif
 }
 
 void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
-    this->n_read_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         READ,
         fd,
@@ -108,12 +124,15 @@ void PthreadAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long lo
         callback,
         &this->n_read_events
     );
+    this->n_read_events.fetch_add(1);
     this->ctx.submit(op);
+#ifdef DEBUG
+    thread_safe_cout("read:", this->n_read_events.load());
+#endif
 }
 
 
 void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-    this->n_write_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         WRITEV,
         fd,
@@ -124,11 +143,14 @@ void PthreadAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsig
         callback,
         &this->n_write_events
     );
+    this->n_write_events.fetch_add(1);
     this->ctx.submit(op);
+#ifdef DEBUG
+    thread_safe_cout("writev:", this->n_write_events.load());
+#endif
 }
 
 void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned long long offset, callback_t callback) {
-    this->n_read_events.fetch_add(1);
     PthradIOData *op = new PthradIOData(
         READV,
         fd,
@@ -139,7 +161,11 @@ void PthreadAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsign
         callback,
         &this->n_read_events
     );
+    this->n_read_events.fetch_add(1);
     this->ctx.submit(op);
+#ifdef DEBUG
+    thread_safe_cout("readv", this->n_read_events.load());
+#endif
 }
 
 void PthreadAsyncIO::get_event(WaitType wt) {
@@ -148,15 +174,27 @@ void PthreadAsyncIO::get_event(WaitType wt) {
     while (
         this->n_write_events.load() != 0
         || this->n_read_events.load() != 0
-    ) {}
+    ) {
+#ifdef DEBUG
+        thread_safe_cout("get_event:", this->n_write_events.load(), ":", this->n_read_events.load());
+#endif
+    }
 }
 
 void PthreadAsyncIO::sync_write_events() {
-    while (this->n_write_events.load() != 0) {}
+    while (this->n_write_events.load() != 0) {
+#ifdef DEBUG
+        thread_safe_cout("sync_write_events:", this->n_write_events.load());
+#endif
+    }
 }
 
 void PthreadAsyncIO::sync_read_events() {
-    while (this->n_read_events.load() != 0) {}
+    while (this->n_read_events.load() != 0) {
+#ifdef DEBUG
+       thread_safe_cout("n_read_events:", this->n_read_events.load());
+#endif
+    }
 }
 
 void PthreadAsyncIO::synchronize() {

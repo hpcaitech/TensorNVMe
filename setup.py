@@ -30,6 +30,7 @@ def check_pthread_compatibility():
 this_dir = os.path.dirname(os.path.abspath(__file__))
 backend_install_dir = os.path.join(os.path.expanduser("~"), ".tensornvme")
 
+debug = os.environ.get("DEBUG", "0") == "1"
 enable_uring = True
 enable_aio = True
 enable_pthread = True
@@ -113,6 +114,8 @@ def setup_bachrc():
 
 def setup_dependencies():
     build_dir = os.path.join(this_dir, "cmake-build")
+    if debug:
+        define_macros.append(("DEBUG", None))
     if not enable_uring:
         define_macros.append(("DISABLE_URING", None))
         sources.remove("csrc/uring.cpp")
