@@ -2,9 +2,14 @@
 
 #include <stdexcept>
 #include <sys/io.h>
+#include <sys/uio.h>
+#include <unistd.h>
 #include <cstdlib>
 #include <future>
 #include <queue>
+#include <tuple>
+#include <functional>
+
 #include "asyncio.h"
 #include "threadpool.hpp"
 
@@ -13,8 +18,8 @@ class PthreadAsyncIO : public AsyncIO
 {
 private:
     BS::thread_pool pool;
-    std::deque<std::future<int>> write_fut;
-    std::deque<std::future<int>> read_fut;
+    std::deque<std::tuple<std::future<ssize_t>, callback_t>> write_fut;
+    std::deque<std::tuple<std::future<ssize_t>, callback_t>> read_fut;
 
 public:
     PthreadAsyncIO(unsigned int n_entries)
