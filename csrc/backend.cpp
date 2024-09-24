@@ -11,6 +11,9 @@
 #ifndef DISABLE_AIO
 #include "aio.h"
 #endif
+#ifndef DISABLE_PTHREAD
+#include "pthread_backend.h"
+#endif
 
 std::unordered_set<std::string> get_backends()
 {
@@ -20,6 +23,9 @@ std::unordered_set<std::string> get_backends()
 #endif
 #ifndef DISABLE_AIO
     backends.insert("aio");
+#endif
+#ifndef DISABLE_PTHREAD
+    backends.insert("pthread");
 #endif
     return backends;
 }
@@ -35,18 +41,27 @@ void probe_asyncio(const std::string &backend)
     try
     {
         std::unique_ptr<AsyncIO> aio;
-        if (backend == "uring")
+        if (backend == "uring") {
 #ifndef DISABLE_URING
             aio.reset(new UringAsyncIO(2));
 #else
-            throw std::runtime_error("backend is not installed\n");
+            throw std::runtime_error("backend uring is not installed\n");
 #endif
-        else
+        } else if (backend == "aio") {
 #ifndef DISABLE_AIO
             aio.reset(new AIOAsyncIO(2));
 #else
-            throw std::runtime_error("backend is not installed\n");
+            throw std::runtime_error("backend aio is not installed\n");
 #endif
+        } else if (backend == "pthread") {
+#ifndef DISABLE_PTHREAD
+            aio.reset(new PthreadAsyncIO(2));
+#else
+            throw std::runtime_error("backend pthread is not installed\n");
+#endif
+        } else {
+            throw std::runtime_error("unknown backend");
+        }
 
         int fd = fileno(fp);
         const int n_loop = 5, n_len = 18;
@@ -120,6 +135,10 @@ AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
 #ifndef DISABLE_AIO
     if (backend == "aio")
         return new AIOAsyncIO(n_entries);
+#endif
+#ifndef DISABLE_PTHREAD
+    if (backend == "pthread")
+        return new PthreadAsyncIO(n_entries);
 #endif
     throw std::runtime_error("Unsupported backend: " + backend);
 }

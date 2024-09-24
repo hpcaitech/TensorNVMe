@@ -208,6 +208,12 @@ def test_adam():
 
         {'n_entries': 1, 'backend': 'aio', 'prefetch': 0, 'vecio': True},
         {'n_entries': 8, 'backend': 'aio', 'prefetch': 2, 'vecio': True},
+
+        {'n_entries': 1, 'backend': 'pthread', 'prefetch': 0, 'vecio': False},
+        {'n_entries': 8, 'backend': 'pthread', 'prefetch': 2, 'vecio': False},
+
+        {'n_entries': 1, 'backend': 'pthread', 'prefetch': 0, 'vecio': True},
+        {'n_entries': 8, 'backend': 'pthread', 'prefetch': 2, 'vecio': True},
     ]
 
     for i, cfg in enumerate(test_config):
