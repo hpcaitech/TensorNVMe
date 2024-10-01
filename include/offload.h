@@ -11,6 +11,7 @@
 #include "aio.h"
 #endif
 
+#include <cstdlib>
 class Offloader
 {
 public:
@@ -31,6 +32,7 @@ public:
     void async_readv(const std::vector<at::Tensor> &tensors, const std::string &key, callback_t callback = nullptr);
     void sync_writev(const std::vector<at::Tensor> &tensors, const std::string &key);
     void sync_readv(const std::vector<at::Tensor> &tensors, const std::string &key);
+    static std::string get_default_backend();
 private:
     const std::string filename;
     int fd;

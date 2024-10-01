@@ -26,9 +26,29 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
     return iovs;
 }
 
+std::string Offloader::get_default_backend() {
+    const char* env = getenv("TENSORNVME_BACKEND");
+    if (env == nullptr) {
+        return std::string("");
+    }
+    return std::string(env);
+}
+
 Offloader::Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend) : filename(filename), space_mgr(SpaceManager(0))
-{
-    this->aio = create_asyncio(n_entries, backend);
+{   
+    std::string default_backend = get_default_backend();
+    if (default_backend.size() > 0) {
+        if (get_backends().count(default_backend) == 0) {
+            throw std::runtime_error("Cannot find backend: " + default_backend + ", please check if TENSORNVME_BACKEND is set correctly");
+        }
+        this->aio = create_asyncio(n_entries, default_backend);
+    } else {
+        if (get_backends().count(backend) == 0) {
+            throw std::runtime_error("Cannot find backend: " + backend + ", please check the passed backend is set correctly");
+        }
+        this->aio = create_asyncio(n_entries, backend);
+    }
+
     this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     this->aio->register_file(fd);
 }
