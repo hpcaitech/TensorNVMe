@@ -14,7 +14,7 @@
 class Offloader
 {
 public:
-    Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend = "uring");
+    Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend);
     SpaceInfo prepare_write(const at::Tensor &tensor, const std::string &key);
     SpaceInfo prepare_read(const at::Tensor &tensor, const std::string &key);
     void async_write(const at::Tensor &tensor, const std::string &key, callback_t callback = nullptr);

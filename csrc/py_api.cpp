@@ -12,7 +12,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     py::class_<Offloader>(m, "Offloader")
-        .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "uring")
+        .def(py::init<const std::string &, unsigned int, const std::string &>(), py::arg("filename"), py::arg("n_entries"), py::arg("backend") = "aio")
         .def("async_write", &Offloader::async_write, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
         .def("async_read", &Offloader::async_read, py::arg("tensor"), py::arg("key"), py::arg("callback") = py::none())
         .def("sync_write", &Offloader::sync_write, py::arg("tensor"), py::arg("key"))
@@ -27,7 +27,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.def("get_backends", get_backends);
     m.def("probe_backend", probe_backend, py::arg("backend"));
     py::class_<AsyncFileWriter>(m, "AsyncFileWriter")
-        .def(py::init<int, unsigned int>(), py::arg("fd"), py::arg("n_entries"))
+        .def(py::init<int, unsigned int, const std::string &>(), py::arg("fd"), py::arg("n_entries"), py::arg("backend") = "aio")
         .def("write", &AsyncFileWriter::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"))
         .def("synchronize", &AsyncFileWriter::synchronize);
 }

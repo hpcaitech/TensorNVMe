@@ -130,19 +130,23 @@ std::string get_default_backend() {
 AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
 {
     std::unordered_set<std::string> backends = get_backends();
+    std::string default_backend = get_default_backend();
+
     if (backends.empty())
         throw std::runtime_error("No asyncio backend is installed");
 
-    std::string default_backend = get_default_backend();
-    if (default_backend.size() > 0) {
-        std::cout << "[backend] backend is overwritten by environ TENSORNVME_BACKEND from " << backend << std::endl;
+    if (default_backend.size() > 0) {  // priority 1: environ is set
+        std::cout << "[backend] backend is overwritten by environ TENSORNVME_BACKEND from " << backend << " to " << default_backend << std::endl;
         backend = default_backend;
+    } else if (backend.size() > 0) {  // priority 2: backend is set
+        if (backends.find(backend) == backends.end())
+            throw std::runtime_error("Unsupported backend: " + backend);
     }
     std::cout << "[backend] using backend: " << backend << std::endl;
-    if (backends.find(backend) == backends.end())
-        throw std::runtime_error("Unsupported backend: " + backend);
+
     if (!probe_backend(backend))
         throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
+
 #ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
