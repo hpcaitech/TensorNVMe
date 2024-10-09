@@ -135,9 +135,10 @@ AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
 
     std::string default_backend = get_default_backend();
     if (default_backend.size() > 0) {
+        std::cout << "[backend] backend is overwritten by environ TENSORNVME_BACKEND from " << backend << std::endl;
         backend = default_backend;
     }
-
+    std::cout << "[backend] using backend: " << backend << std::endl;
     if (backends.find(backend) == backends.end())
         throw std::runtime_error("Unsupported backend: " + backend);
     if (!probe_backend(backend))

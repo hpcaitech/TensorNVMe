@@ -2,6 +2,7 @@
 #include <string>
 #include <unordered_set>
 #include <cstdlib>
+#include <iostream>
 
 std::unordered_set<std::string> get_backends();
 
