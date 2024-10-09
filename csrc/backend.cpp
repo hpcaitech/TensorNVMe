@@ -119,11 +119,25 @@ bool probe_backend(const std::string &backend)
     }
 }
 
-AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
+std::string get_default_backend() {
+    const char* env = getenv("TENSORNVME_BACKEND");
+    if (env == nullptr) {
+        return std::string("");
+    }
+    return std::string(env);
+}
+
+AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
 {
     std::unordered_set<std::string> backends = get_backends();
     if (backends.empty())
         throw std::runtime_error("No asyncio backend is installed");
+
+    std::string default_backend = get_default_backend();
+    if (default_backend.size() > 0) {
+        backend = default_backend;
+    }
+
     if (backends.find(backend) == backends.end())
         throw std::runtime_error("Unsupported backend: " + backend);
     if (!probe_backend(backend))
