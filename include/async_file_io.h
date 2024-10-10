@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "asyncio.h"
 #ifndef DISABLE_URING
 #include "uring.h"
@@ -10,7 +11,7 @@
 class AsyncFileWriter
 {
 public:
-    AsyncFileWriter(int fd, unsigned int n_entries);
+    AsyncFileWriter(int fd, unsigned int n_entries, const std::string &backend);
     void write(size_t buffer, size_t n_bytes, unsigned long long offset);
     void synchronize();
     ~AsyncFileWriter();

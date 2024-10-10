@@ -1,20 +1,8 @@
 #include "async_file_io.h"
 #include "backend.h"
 #include <stdexcept>
-#include <string>
 
-AsyncFileWriter::AsyncFileWriter(int fd, unsigned int n_entries) : fd(fd)
-{
-    for (const std::string &backend : get_backends())
-    {
-        if (probe_backend(backend))
-        {
-            this->aio = create_asyncio(n_entries, backend);
-            return;
-        }
-    }
-    throw std::runtime_error("No asyncio backend is installed");
-}
+AsyncFileWriter::AsyncFileWriter(int fd, unsigned int n_entries, const std::string &backend) : fd(fd), aio(create_asyncio(n_entries, backend)) {}
 
 void AsyncFileWriter::write(size_t buffer, size_t n_bytes, unsigned long long offset)
 {
