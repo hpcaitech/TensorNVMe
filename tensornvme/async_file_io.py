@@ -5,9 +5,12 @@ from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
 
 
 class AsyncFileWriter:
-    def __init__(self, fp: IOBase, n_entries: int = 16) -> None:
+    def __init__(self, fp: IOBase, n_entries: int = 16, backend=None) -> None:
         fd = fp.fileno()
-        self.io = AsyncFileWriterC(fd, n_entries)
+        if backend is not None:
+            self.io = AsyncFileWriterC(fd, n_entries, backend=backend)
+        else:
+            self.io = AsyncFileWriterC(fd, n_entries)
         self.fp = fp
         self.offset = 0
         # must ensure the data is not garbage collected

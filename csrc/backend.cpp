@@ -119,15 +119,50 @@ bool probe_backend(const std::string &backend)
     }
 }
 
-AsyncIO *create_asyncio(unsigned int n_entries, const std::string &backend)
+std::string get_default_backend() {
+    const char* env = getenv("TENSORNVME_BACKEND");
+    if (env == nullptr) {
+        return std::string("");
+    }
+    return std::string(env);
+}
+
+bool get_debug_flag() {
+    const char* env_ = getenv("TENSORNVME_DEBUG");
+    if (env_ == nullptr) {
+        return false;
+    }
+    std::string env(env_);
+    std::transform(env.begin(), env.end(), env.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return env == "1" || env == "true";
+}
+
+AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
 {
     std::unordered_set<std::string> backends = get_backends();
+    std::string default_backend = get_default_backend();
+    bool is_debugging = get_debug_flag();
+
     if (backends.empty())
         throw std::runtime_error("No asyncio backend is installed");
-    if (backends.find(backend) == backends.end())
-        throw std::runtime_error("Unsupported backend: " + backend);
+
+    if (default_backend.size() > 0) {  // priority 1: environ is set
+        if (is_debugging) {
+            std::cout << "[backend] backend is overwritten by environ TENSORNVME_BACKEND from " << backend << " to " << default_backend << std::endl;
+        }
+        backend = default_backend;
+    } else if (backend.size() > 0) {  // priority 2: backend is set
+        if (backends.find(backend) == backends.end())
+            throw std::runtime_error("Unsupported backend: " + backend);
+    }
+    if (is_debugging) {
+        std::cout << "[backend] using backend: " << backend << std::endl;
+    }
+
     if (!probe_backend(backend))
         throw std::runtime_error("Backend \"" + backend + "\" is not install correctly");
+
 #ifndef DISABLE_URING
     if (backend == "uring")
         return new UringAsyncIO(n_entries);
