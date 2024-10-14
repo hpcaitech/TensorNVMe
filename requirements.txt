@@ -1,4 +1,3 @@
 packaging
 click
 torch
-colossalai>=0.4.4
