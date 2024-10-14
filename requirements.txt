@@ -1,3 +1,4 @@
 packaging
 click
 torch
+safetensors==0.4.3

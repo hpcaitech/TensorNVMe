@@ -1,7 +1,11 @@
 import ctypes
-from io import IOBase
+import torch
 
+from typing import Dict, Optional
+from io import IOBase
+from safetensors.torch import _tobytes
 from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
+from tensornvme.safetensors import prepare
 
 
 class AsyncFileWriter:
@@ -17,14 +21,27 @@ class AsyncFileWriter:
         self.buffers = []
 
     def write(self, data: bytes) -> int:
-        if isinstance(data, memoryview):
-            data = data.tobytes()
         ptr = ctypes.cast(data, ctypes.POINTER(ctypes.c_char))
         addr = ctypes.addressof(ptr.contents)
         self.io.write(addr, len(data), self.offset)
         self.offset += len(data)
         self.buffers.append(data)
         return len(data)
+
+    def save(
+        self,
+        state_dict: Dict[str, torch.Tensor],
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> None:
+        prepared_data, tensors = prepare(state_dict, metadata)
+        n, header_bytes, _ = prepared_data.n, prepared_data.header_bytes, prepared_data.offset
+
+        self.write(n.to_bytes(8, byteorder='little'))
+        self.write(header_bytes)
+
+        for tensor in tensors:
+            tensor_bytes = _tobytes(tensor, '')
+            self.write(tensor_bytes)
 
     def flush(self) -> None:
         pass
