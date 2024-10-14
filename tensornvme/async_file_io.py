@@ -1,12 +1,11 @@
 import ctypes
 import torch
 
-from typing import Dict, Optional
+from typing import Dict
 from io import IOBase
-from safetensors.torch import _tobytes
 from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
-from tensornvme.safetensors import prepare
 
+from colossalai.utils.safetensors import prepare
 
 class AsyncFileWriter:
     def __init__(self, fp: IOBase, n_entries: int = 16, backend=None) -> None:
@@ -28,21 +27,23 @@ class AsyncFileWriter:
         self.buffers.append(data)
         return len(data)
 
+    def write_raw(self, py_ref: object, buffer: int, n_bytes: int, offset: int) -> None:
+        self.io.write(buffer, n_bytes, offset)
+        self.offset += n_bytes
+        self.buffers.append(py_ref)
+
     def save(
         self,
-        state_dict: Dict[str, torch.Tensor],
-        metadata: Optional[Dict[str, str]] = None,
+        state_dict: Dict[str, torch.Tensor]
     ) -> None:
-        prepared_data, tensors = prepare(state_dict, metadata)
+        prepared_data, tensors = prepare(state_dict)
         n, header_bytes, _ = prepared_data.n, prepared_data.header_bytes, prepared_data.offset
 
         self.write(n.to_bytes(8, byteorder='little'))
         self.write(header_bytes)
 
         for tensor in tensors:
-            self.io.write(tensor.data_ptr(), tensor.numel() * tensor.element_size(), self.offset)
-            self.offset += tensor.numel() * tensor.element_size()
-            self.buffers.append(tensor)
+            self.write_raw(tensor, tensor.data_ptr(), tensor.numel() * tensor.element_size(), self.offset)
 
     def flush(self) -> None:
         pass

@@ -1,4 +1,4 @@
 packaging
 click
 torch
-safetensors==0.4.3
+colossalai>=0.4.4
