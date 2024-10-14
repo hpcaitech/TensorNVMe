@@ -1,8 +1,9 @@
 import ctypes
+from functools import partial
+
+from typing import List
 from io import IOBase
-
 from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
-
 
 class AsyncFileWriter:
     def __init__(self, fp: IOBase, n_entries: int = 16, backend=None) -> None:
@@ -17,14 +18,22 @@ class AsyncFileWriter:
         self.buffers = []
 
     def write(self, data: bytes) -> int:
-        if isinstance(data, memoryview):
-            data = data.tobytes()
         ptr = ctypes.cast(data, ctypes.POINTER(ctypes.c_char))
         addr = ctypes.addressof(ptr.contents)
-        self.io.write(addr, len(data), self.offset)
+        self.buffers.append(data)  # append before callback is called
+        self.io.write(addr, len(data), self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
         self.offset += len(data)
-        self.buffers.append(data)
+
         return len(data)
+
+    def write_raw(self, py_ref: object, buffer: int, n_bytes: int, offset: int) -> None:
+        self.buffers.append(py_ref)  # append before callback is called
+        self.io.write(buffer, n_bytes, offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
+        self.offset += n_bytes
+
+    @staticmethod
+    def gc_callback(listt: List, idx: int) -> None:
+        listt[idx] = None
 
     def flush(self) -> None:
         pass
