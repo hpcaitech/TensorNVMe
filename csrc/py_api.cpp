@@ -28,6 +28,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.def("probe_backend", probe_backend, py::arg("backend"));
     py::class_<AsyncFileWriter>(m, "AsyncFileWriter")
         .def(py::init<int, unsigned int, const std::string &>(), py::arg("fd"), py::arg("n_entries"), py::arg("backend") = "aio")
-        .def("write", &AsyncFileWriter::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"))
+        .def("write", &AsyncFileWriter::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"), py::arg("callback") = py::none())
         .def("synchronize", &AsyncFileWriter::synchronize);
 }

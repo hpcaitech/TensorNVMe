@@ -1,7 +1,8 @@
 import ctypes
+from functools import partial
 import torch
 
-from typing import Dict
+from typing import Dict, List
 from io import IOBase
 from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
 
@@ -22,15 +23,16 @@ class AsyncFileWriter:
     def write(self, data: bytes) -> int:
         ptr = ctypes.cast(data, ctypes.POINTER(ctypes.c_char))
         addr = ctypes.addressof(ptr.contents)
-        self.io.write(addr, len(data), self.offset)
+        self.buffers.append(data)  # append before callback is called
+        self.io.write(addr, len(data), self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
         self.offset += len(data)
-        self.buffers.append(data)
+
         return len(data)
 
     def write_raw(self, py_ref: object, buffer: int, n_bytes: int, offset: int) -> None:
-        self.io.write(buffer, n_bytes, offset)
+        self.buffers.append(py_ref)  # append before callback is called
+        self.io.write(buffer, n_bytes, offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
         self.offset += n_bytes
-        self.buffers.append(py_ref)
 
     def save(
         self,
@@ -44,6 +46,10 @@ class AsyncFileWriter:
 
         for tensor in tensors:
             self.write_raw(tensor, tensor.data_ptr(), tensor.numel() * tensor.element_size(), self.offset)
+
+    @staticmethod
+    def gc_callback(listt: List, idx: int) -> None:
+        listt[idx] = None
 
     def flush(self) -> None:
         pass
