@@ -40,8 +40,9 @@ class AsyncFileWriter:
         self.write(header_bytes)
 
         for tensor in tensors:
-            tensor_bytes = _tobytes(tensor, '')
-            self.write(tensor_bytes)
+            self.io.write(tensor.data_ptr(), tensor.numel() * tensor.element_size(), self.offset)
+            self.offset += tensor.numel() * tensor.element_size()
+            self.buffers.append(tensor)
 
     def flush(self) -> None:
         pass
