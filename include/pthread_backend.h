@@ -38,4 +38,6 @@ public:
     void synchronize();
 
     void register_file(int fd);
+
+    void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback);
 };

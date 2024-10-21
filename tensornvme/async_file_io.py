@@ -1,6 +1,6 @@
 import ctypes
 from functools import partial
-
+from torch import Tensor
 from typing import List
 from io import IOBase
 from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
@@ -30,6 +30,11 @@ class AsyncFileWriter:
         self.buffers.append(py_ref)  # append before callback is called
         self.io.write(buffer, n_bytes, offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
         self.offset += n_bytes
+
+    def write_tensor(self, tensor: Tensor) -> None:
+        self.buffers.append(tensor)
+        self.io.write_tensor(tensor, self.offset) # , partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
+        self.offset += tensor.numel() * tensor.element_size()
 
     @staticmethod
     def gc_callback(listt: List, idx: int) -> None:

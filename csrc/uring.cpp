@@ -98,3 +98,12 @@ void UringAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned
     io_uring_submit(&this->ring);
     this->n_read_events++;
 }
+
+void UringAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback) {
+    if (t.is_cuda()) {
+        t = t.to(torch::kCPU);
+    }
+    void *buffer = t.data_ptr<float>();
+    size_t n_bytes = t.numel() * t.element_size();
+    this->write(fd, buffer, n_bytes, offset, callback);
+}

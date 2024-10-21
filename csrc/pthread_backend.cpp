@@ -1,5 +1,7 @@
 #include "pthread_backend.h"
 
+#include <iostream>
+
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
     auto fut = this->pool.submit_task(
         [fd, buffer, n_bytes, offset] {
@@ -77,3 +79,20 @@ void PthreadAsyncIO::synchronize() {
 }
 
 void PthreadAsyncIO::register_file(int fd) {}
+
+void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback) {
+    auto fut = this->pool.submit_task(
+        [fd, t, offset] {
+            torch::Tensor cpu_tensor;
+            if (t.is_cuda()) {
+                cpu_tensor = t.to(torch::kCPU);
+            } else {
+                cpu_tensor = t;
+            }
+            void *buf = cpu_tensor.data_ptr();
+            size_t n_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
+            return pwrite(fd, buf, n_bytes, offset);
+        }
+    );
+    this->write_fut.push_back(std::make_tuple(std::move(fut), callback));
+}
