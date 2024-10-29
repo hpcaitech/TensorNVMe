@@ -8,8 +8,8 @@ void AsyncFileWriter::write(size_t buffer, size_t n_bytes, unsigned long long of
     this->aio->write(this->fd, ptr, n_bytes, offset, callback);
 }
 
-void AsyncFileWriter::write_tensor(torch::Tensor tensor, unsigned long long offset, callback_t callback) {
-    this->aio->write_tensor(this->fd, tensor, offset, callback);
+void AsyncFileWriter::write_tensor(torch::Tensor tensor, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
+    this->aio->write_tensor(this->fd, tensor, offset, callback, pinned);
 }
 
 

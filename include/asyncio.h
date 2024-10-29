@@ -48,5 +48,5 @@ public:
     virtual void synchronize() = 0;
 
     virtual void register_file(int fd) = 0;
-    virtual void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback) = 0;
+    virtual void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) = 0;
 };

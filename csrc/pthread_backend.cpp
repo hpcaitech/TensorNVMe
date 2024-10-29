@@ -80,12 +80,17 @@ void PthreadAsyncIO::synchronize() {
 
 void PthreadAsyncIO::register_file(int fd) {}
 
-void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback) {
+void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
     auto fut = this->pool.submit_task(
-        [fd, t, offset] {
+        [fd, t, offset, pinned] {
             torch::Tensor cpu_tensor;
             if (t.is_cuda()) {
-                cpu_tensor = t.to(torch::kCPU);
+                if (pinned.has_value()) {
+                    pinned.value().copy_(t);
+                    cpu_tensor = pinned.value();
+                } else {
+                    cpu_tensor = t.to(torch::kCPU);
+                }
             } else {
                 cpu_tensor = t;
             }

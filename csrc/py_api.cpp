@@ -29,6 +29,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     py::class_<AsyncFileWriter>(m, "AsyncFileWriter")
         .def(py::init<int, unsigned int, const std::string &>(), py::arg("fd"), py::arg("n_entries"), py::arg("backend") = "aio")
         .def("write", &AsyncFileWriter::write, py::arg("buffer"), py::arg("n_bytes"), py::arg("offset"), py::arg("callback") = py::none())
-        .def("write_tensor", &AsyncFileWriter::write_tensor, py::arg("tensor"), py::arg("offset"), py::arg("callback") = py::none())
+        .def("write_tensor", &AsyncFileWriter::write_tensor, py::arg("tensor"), py::arg("offset"), py::arg("callback") = py::none(), py::arg("pinned") = py::none())
         .def("synchronize", &AsyncFileWriter::synchronize);
 }
