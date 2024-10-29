@@ -32,8 +32,8 @@ class AsyncFileWriter:
         self.offset += n_bytes
 
     def write_tensor(self, tensor: Tensor) -> None:
-        self.buffers.append(tensor)
-        self.io.write_tensor(tensor, self.offset) # , partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
+        self.buffers.append(tensor)  # append before callback is called
+        self.io.write_tensor(tensor, self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1))
         self.offset += tensor.numel() * tensor.element_size()
 
     @staticmethod
