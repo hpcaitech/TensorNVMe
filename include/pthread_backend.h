@@ -12,6 +12,9 @@
 #include <iostream>
 #include <c10/cuda/CUDAStream.h>
 #include <c10/cuda/CUDAGuard.h>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 #include "asyncio.h"
 #include "threadpool.hpp"
@@ -21,12 +24,15 @@ class PthreadAsyncIO : public AsyncIO
 {
 private:
     BS::thread_pool pool;
+    std::atomic<unsigned int> h2d_in_progress;
+    std::condition_variable cv;
+    std::mutex mtx;
     std::deque<std::tuple<std::future<ssize_t>, callback_t>> write_fut;
     std::deque<std::tuple<std::future<ssize_t>, callback_t>> read_fut;
 
 public:
     PthreadAsyncIO(unsigned int n_entries)
-        : pool(n_entries) {}
+        : pool(n_entries), h2d_in_progress(0) {}
 
     ~PthreadAsyncIO() {}
 
@@ -38,6 +44,8 @@ public:
     void get_event(WaitType wt);
     void sync_write_events();
     void sync_read_events();
+    void register_h2d(unsigned int num_tensors);
+    void sync_h2d();
     void synchronize();
 
     void register_file(int fd);

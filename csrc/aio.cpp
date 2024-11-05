@@ -139,3 +139,6 @@ void AIOAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset
     size_t n_bytes = t.numel() * t.element_size();
     this->write(fd, buffer, n_bytes, offset, callback);
 }
+
+void AIOAsyncIO::register_h2d(unsigned int num_tensors) {}
+void AIOAsyncIO::sync_h2d() {}

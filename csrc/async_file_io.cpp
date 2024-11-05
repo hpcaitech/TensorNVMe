@@ -12,6 +12,13 @@ void AsyncFileWriter::write_tensor(torch::Tensor tensor, unsigned long long offs
     this->aio->write_tensor(this->fd, tensor, offset, callback, pinned);
 }
 
+void AsyncFileWriter::register_h2d(unsigned int num_tensors) {
+    this->aio->register_h2d(num_tensors);
+}
+
+void AsyncFileWriter::sync_h2d() {
+    this->aio->sync_h2d();
+}
 
 void AsyncFileWriter::synchronize()
 {

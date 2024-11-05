@@ -38,12 +38,19 @@ class AsyncFileWriter:
         self.io.write_tensor(tensor, self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1), pinned)
         self.offset += tensor.numel() * tensor.element_size()
 
+    def sync_h2d(self) -> None:
+        self.io.sync_h2d()
+
+    def register_h2d(self, num_tensors: int) -> None:
+        self.io.register_h2d(num_tensors)
+
     def write_gpu_tensor(self, tensor: Tensor, pinned: Optional[Tensor] = None) -> None:
         assert tensor.device.type == 'cuda', f"tensor must be on cuda device, got {tensor.device}"
         with torch.cuda.stream(self.comm_stream):
             self.write_tensor(tensor, pinned)
 
     def sync_before_step(self):
+        self.sync_h2d()
         self.comm_stream.synchronize()
 
     @staticmethod

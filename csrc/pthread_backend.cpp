@@ -78,24 +78,36 @@ void PthreadAsyncIO::synchronize() {
 
 void PthreadAsyncIO::register_file(int fd) {}
 
+void PthreadAsyncIO::register_h2d(unsigned int num_tensors) {
+    this->h2d_in_progress.store(num_tensors);  // register tensors to write for this run
+}
+
+void PthreadAsyncIO::sync_h2d() {
+    std::unique_lock<std::mutex> lock(this->mtx);
+    this->cv.wait(lock, [this] { return this->h2d_in_progress == 0; });  // block until all in-progress h2d are completed
+}
+
 void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
     auto stream = c10::cuda::getCurrentCUDAStream();
-    at::cuda::CUDAStreamGuard guard(stream);  // https://pytorch.org/cppdocs/notes/tensor_cuda_stream.html
-    auto event_ptr = std::make_shared<c10::Event>(torch::kCUDA);  // make a shared ptr here since event is not copyable
-    if (t.is_cuda()) {
-        if (pinned.has_value()) {
-            pinned.value().copy_(t, /*non_blocking*/ true);
-            t = pinned.value();
-        } else {
-            t = t.to(t.options().device(c10::DeviceType::CPU), /*non_blocking*/ true, /*copy*/ false);  // modified from torch::Tensor::cpu()
-        }
-    }
-    event_ptr->record(stream);
     auto fut = this->pool.submit_task(
-        [fd, t, offset, pinned, event_ptr] {
-            event_ptr->synchronize(); // sync with comm stream
-            void *buf = t.data_ptr();
-            size_t n_bytes = t.numel() * t.element_size();
+        [this, fd, t, offset, pinned, stream] {
+            at::cuda::CUDAStreamGuard guard(stream);  // https://pytorch.org/cppdocs/notes/tensor_cuda_stream.html
+            torch::Tensor cpu_tensor;
+            if (t.is_cuda()) {
+                if (pinned.has_value()) {
+                    pinned.value().copy_(t, /*non_blocking*/ false);
+                    cpu_tensor = pinned.value();
+                } else {
+                    cpu_tensor = t.to(t.options().device(c10::DeviceType::CPU), /*non_blocking*/ false, /*copy*/ false);  // modified from torch::Tensor::cpu()
+                }
+            }
+            this->h2d_in_progress.fetch_sub(1);
+            if (this->h2d_in_progress.load() == 0) {  // notify when all h2d are completed and safe to optimizer.step()
+                std::lock_guard<std::mutex> lock(this->mtx);
+                cv.notify_one();
+            }
+            void *buf = cpu_tensor.data_ptr();
+            size_t n_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
             return pwrite(fd, buf, n_bytes, offset);
         }
     );
