@@ -1,7 +1,5 @@
 #include "pthread_backend.h"
 
-#include <iostream>
-
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback) {
     auto fut = this->pool.submit_task(
         [fd, buffer, n_bytes, offset] {
@@ -81,21 +79,23 @@ void PthreadAsyncIO::synchronize() {
 void PthreadAsyncIO::register_file(int fd) {}
 
 void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
+    auto stream = c10::cuda::getCurrentCUDAStream();
+    at::cuda::CUDAStreamGuard guard(stream);  // https://pytorch.org/cppdocs/notes/tensor_cuda_stream.html
+    auto event_ptr = std::make_shared<c10::Event>(torch::kCUDA);  // make a shared ptr here since event is not copyable
+    if (t.is_cuda()) {
+        if (pinned.has_value()) {
+            pinned.value().copy_(t, /*non_blocking*/ true);
+            t = pinned.value();
+        } else {
+            t = t.to(t.options().device(c10::DeviceType::CPU), /*non_blocking*/ true, /*copy*/ false);  // modified from torch::Tensor::cpu()
+        }
+    }
+    event_ptr->record(stream);
     auto fut = this->pool.submit_task(
-        [fd, t, offset, pinned] {
-            torch::Tensor cpu_tensor;
-            if (t.is_cuda()) {
-                if (pinned.has_value()) {
-                    pinned.value().copy_(t);
-                    cpu_tensor = pinned.value();
-                } else {
-                    cpu_tensor = t.to(torch::kCPU);
-                }
-            } else {
-                cpu_tensor = t;
-            }
-            void *buf = cpu_tensor.data_ptr();
-            size_t n_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
+        [fd, t, offset, pinned, event_ptr] {
+            event_ptr->synchronize(); // sync with comm stream
+            void *buf = t.data_ptr();
+            size_t n_bytes = t.numel() * t.element_size();
             return pwrite(fd, buf, n_bytes, offset);
         }
     );

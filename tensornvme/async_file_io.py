@@ -1,4 +1,5 @@
 import ctypes
+import torch
 from functools import partial
 from torch import Tensor
 from typing import List, Optional
@@ -16,6 +17,7 @@ class AsyncFileWriter:
         self.offset = 0
         # must ensure the data is not garbage collected
         self.buffers = []
+        self.comm_stream = torch.cuda.Stream()
 
     def write(self, data: bytes) -> int:
         ptr = ctypes.cast(data, ctypes.POINTER(ctypes.c_char))
@@ -35,6 +37,14 @@ class AsyncFileWriter:
         self.buffers.append(tensor)  # append before callback is called
         self.io.write_tensor(tensor, self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1), pinned)
         self.offset += tensor.numel() * tensor.element_size()
+
+    def write_gpu_tensor(self, tensor: Tensor, pinned: Optional[Tensor] = None) -> None:
+        assert tensor.device.type == 'cuda', f"tensor must be on cuda device, got {tensor.device}"
+        with torch.cuda.stream(self.comm_stream):
+            self.write_tensor(tensor, pinned)
+
+    def sync_before_step(self):
+        self.comm_stream.synchronize()
 
     @staticmethod
     def gc_callback(listt: List, idx: int) -> None:

@@ -9,6 +9,9 @@
 #include <queue>
 #include <tuple>
 #include <functional>
+#include <iostream>
+#include <c10/cuda/CUDAStream.h>
+#include <c10/cuda/CUDAGuard.h>
 
 #include "asyncio.h"
 #include "threadpool.hpp"
