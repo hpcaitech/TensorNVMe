@@ -39,15 +39,11 @@ class AsyncFileWriter:
             self.io.write_tensor(tensor, self.offset, partial(AsyncFileWriter.gc_callback, self.buffers, len(self.buffers) - 1), pinned)
             self.offset += tensor.numel() * tensor.element_size()
 
-    def sync_h2d(self) -> None:
-        self.io.sync_h2d()
-
     def register_h2d(self, num_tensors: int) -> None:
         self.io.register_h2d(num_tensors)
 
     def sync_before_step(self):
-        self.sync_h2d()
-        self.comm_stream.synchronize()
+        self.io.sync_h2d()
 
     @staticmethod
     def gc_callback(listt: List, idx: int) -> None:
