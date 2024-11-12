@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <functional>
+#include <torch/torch.h>
 
 using callback_t = std::function<void()>;
 
@@ -44,7 +45,10 @@ public:
     virtual void get_event(WaitType wt) = 0;
     virtual void sync_write_events() = 0;
     virtual void sync_read_events() = 0;
+    virtual void register_h2d(unsigned int num_tensors) = 0;
+    virtual void sync_h2d() = 0;
     virtual void synchronize() = 0;
 
     virtual void register_file(int fd) = 0;
+    virtual void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) = 0;
 };

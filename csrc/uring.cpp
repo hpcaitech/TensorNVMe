@@ -98,3 +98,20 @@ void UringAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned
     io_uring_submit(&this->ring);
     this->n_read_events++;
 }
+
+void UringAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
+    if (t.is_cuda()) {
+        if (pinned.has_value()) {
+            pinned.value().copy_(t);
+            t = pinned.value();
+        } else {
+            t = t.to(torch::kCPU);
+        }
+    }
+    void *buffer = t.data_ptr<float>();
+    size_t n_bytes = t.numel() * t.element_size();
+    this->write(fd, buffer, n_bytes, offset, callback);
+}
+
+void UringAsyncIO::register_h2d(unsigned int num_tensors) {}
+void UringAsyncIO::sync_h2d() {}

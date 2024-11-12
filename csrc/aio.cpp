@@ -1,5 +1,3 @@
-#include <stdexcept>
-#include <memory>
 #include "aio.h"
 
 AIOAsyncIO::AIOAsyncIO(unsigned int n_entries)
@@ -127,3 +125,20 @@ void AIOAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned l
 
     this->n_read_events++;
 }
+
+void AIOAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
+    if (t.is_cuda()) {
+        if (pinned.has_value()) {
+            pinned.value().copy_(t);
+            t = pinned.value();
+        } else {
+            t = t.to(torch::kCPU);
+        }
+    }
+    void *buffer = t.data_ptr();
+    size_t n_bytes = t.numel() * t.element_size();
+    this->write(fd, buffer, n_bytes, offset, callback);
+}
+
+void AIOAsyncIO::register_h2d(unsigned int num_tensors) {}
+void AIOAsyncIO::sync_h2d() {}

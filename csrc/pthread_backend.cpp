@@ -77,3 +77,48 @@ void PthreadAsyncIO::synchronize() {
 }
 
 void PthreadAsyncIO::register_file(int fd) {}
+
+void PthreadAsyncIO::register_h2d(unsigned int num_tensors) {
+    this->h2d_in_progress.store(num_tensors);  // register tensors to write for this run
+}
+
+void PthreadAsyncIO::sync_h2d() {
+    std::unique_lock<std::mutex> lock(this->mtx);
+    this->cv.wait(lock, [this] { return this->h2d_in_progress == 0; });  // block until all in-progress h2d are completed
+}
+
+void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
+    auto stream = c10::cuda::getCurrentCUDAStream();
+    if (!t.is_cuda()) {
+        this->h2d_in_progress.fetch_sub(1);  // already moved to cpu
+        if (this->h2d_in_progress.load() == 0) {  // notify when all h2d are completed and safe to optimizer.step()
+            std::lock_guard<std::mutex> lock(this->mtx);
+            cv.notify_one();
+        }
+    }
+    auto fut = this->pool.submit_task(
+        [this, fd, t, offset, pinned, stream] {
+            torch::Tensor cpu_tensor;
+            if (t.is_cuda()) {
+                at::cuda::CUDAStreamGuard guard(stream);  // https://pytorch.org/cppdocs/notes/tensor_cuda_stream.html
+                if (pinned.has_value()) {
+                    pinned.value().copy_(t, /*non_blocking*/ false);
+                    cpu_tensor = pinned.value();
+                } else {
+                    cpu_tensor = t.to(t.options().device(c10::DeviceType::CPU), /*non_blocking*/ false, /*copy*/ false);  // modified from torch::Tensor::cpu()
+                }
+                this->h2d_in_progress.fetch_sub(1);
+                if (this->h2d_in_progress.load() == 0) {  // notify when all h2d are completed and safe to optimizer.step()
+                    std::lock_guard<std::mutex> lock(this->mtx);
+                    cv.notify_one();
+                }
+            } else {
+                cpu_tensor = t;
+            }
+            void *buf = cpu_tensor.data_ptr();
+            size_t n_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
+            return pwrite(fd, buf, n_bytes, offset);
+        }
+    );
+    this->write_fut.push_back(std::make_tuple(std::move(fut), callback));
+}
