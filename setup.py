@@ -73,7 +73,6 @@ def cpp_ext_helper(name, sources, **kwargs):
     if CUDA_HOME is not None:
         extra_include_dirs.append(os.path.join(CUDA_HOME, "include"))
 
-    extra_include_dirs = []
     if "C_INCLUDE_PATH" in os.environ:
         extra_include_dirs.extend(os.environ["C_INCLUDE_PATH"].split(":"))
     if "CPLUS_INCLUDE_PATH" in os.environ:
