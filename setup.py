@@ -20,6 +20,7 @@ def check_uring_compatibility():
     kernel_version = version.parse(uname_info.release.split("-")[0])
     return kernel_version >= version.parse("5.10")
 
+
 def check_pthread_compatibility():
     uname_info = uname()
     if uname_info.system != "Linux":
@@ -39,7 +40,7 @@ if os.environ.get("DISABLE_URING") == "1" or not check_uring_compatibility():
 if os.environ.get("DISABLE_AIO") == "1":
     enable_aio = False
 if os.environ.get("DISABLE_PTHREAD") == "1" or not check_pthread_compatibility():
-    enable_pthread=False
+    enable_pthread = False
 
 assert enable_aio or enable_uring or enable_pthread
 if os.environ.get("WITH_ROOT") == "1":
@@ -65,7 +66,12 @@ cmdclass = {}
 
 
 def cpp_ext_helper(name, sources, **kwargs):
-    from torch.utils.cpp_extension import CppExtension
+    from torch.utils.cpp_extension import CUDA_HOME, CppExtension
+
+    extra_include_dirs = []
+
+    if CUDA_HOME is not None:
+        extra_include_dirs.append(os.path.join(CUDA_HOME, "include"))
 
     extra_include_dirs = []
     if "C_INCLUDE_PATH" in os.environ:
