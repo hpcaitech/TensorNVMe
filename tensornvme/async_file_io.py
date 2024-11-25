@@ -13,7 +13,7 @@ class AsyncFileWriter:
     def __init__(self, path: str, n_entries: int = 16, backend=None) -> None:
         # this still takes ram buffer, which may lead to OOM
         # self.f = open(path, "wb", buffering=0)
-        self.fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_DIRECT, mode=0o664)
+        self.fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_SYNC, mode=0o664)
         if backend is not None:
             self.io = AsyncFileWriterC(self.fd, n_entries, backend=backend)
         else:
