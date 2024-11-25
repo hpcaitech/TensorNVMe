@@ -87,8 +87,6 @@ void PthreadAsyncIO::sync_read_events()
 void PthreadAsyncIO::synchronize()
 {
     this->get_event(WAIT);
-    fsync(this->fd);
-    fdatasync(this->fd);
 }
 
 void PthreadAsyncIO::register_file(int fd) {}
