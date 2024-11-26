@@ -35,4 +35,5 @@ public:
 
     void register_file(int fd);
     void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned);
+    void register_tasks(unsigned int num_tasks);
 };

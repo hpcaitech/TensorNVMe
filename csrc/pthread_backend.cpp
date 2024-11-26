@@ -1,11 +1,35 @@
 #include "pthread_backend.h"
+#include <fstream>
+
+void write_file(const std::string &filename, const std::string &content)
+{
+    std::ofstream file(filename, std::ios::app);
+    file << content << std::endl;
+    file.close();
+}
 
 void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback)
 {
     auto fut = this->pool.submit_task(
-        [fd, buffer, n_bytes, offset]
+        [this, fd, buffer, n_bytes, offset]
         {
-            return pwrite(fd, buffer, n_bytes, offset);
+            auto val = pwrite(fd, buffer, n_bytes, offset);
+            if (this->is_debug)
+            {
+                auto cur_tasks = this->tasks_in_progress.fetch_sub(1);
+                if (cur_tasks == 1)
+                {
+                    if (this->debug_log.empty())
+                    {
+                        std::cout << "All tasks are completed" << std::endl;
+                    }
+                    else
+                    {
+                        write_file(this->debug_log, "All tasks are completed");
+                    }
+                }
+            }
+            return val;
         });
     this->write_fut.push_back(std::make_tuple(std::move(fut), callback));
 }
@@ -144,7 +168,31 @@ void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long of
             }
             void *buf = cpu_tensor.data_ptr();
             size_t n_bytes = cpu_tensor.numel() * cpu_tensor.element_size();
-            return pwrite(fd, buf, n_bytes, offset);
+            auto val = pwrite(fd, buf, n_bytes, offset);
+            if (this->is_debug)
+            {
+                auto cur_tasks = this->tasks_in_progress.fetch_sub(1);
+                if (cur_tasks == 1)
+                {
+                    if (this->debug_log.empty())
+                    {
+                        std::cout << "All tasks are completed" << std::endl;
+                    }
+                    else
+                    {
+                        write_file(this->debug_log, "All tasks are completed");
+                    }
+                }
+            }
+            return val;
         });
     this->write_fut.push_back(std::make_tuple(std::move(fut), callback));
+}
+
+void PthreadAsyncIO::register_tasks(unsigned int num_tasks)
+{
+    if (this->is_debug)
+    {
+        this->tasks_in_progress.store(num_tasks);
+    }
 }

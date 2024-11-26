@@ -18,7 +18,8 @@
 
 #include "asyncio.h"
 #include "threadpool.hpp"
-
+#include "backend.h"
+#include <fstream>
 
 class PthreadAsyncIO : public AsyncIO
 {
@@ -29,6 +30,10 @@ private:
     std::mutex mtx;
     std::deque<std::tuple<std::future<ssize_t>, callback_t>> write_fut;
     std::deque<std::tuple<std::future<ssize_t>, callback_t>> read_fut;
+    const bool is_debug = get_debug_flag();
+    const std::string debug_log = get_debug_log();
+
+    std::atomic<unsigned int> tasks_in_progress;
 
 public:
     PthreadAsyncIO(unsigned int n_entries)
@@ -51,4 +56,5 @@ public:
     void register_file(int fd);
 
     void write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned);
+    void register_tasks(unsigned int num_tasks);
 };

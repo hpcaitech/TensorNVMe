@@ -32,5 +32,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
         .def("write_tensor", &AsyncFileWriter::write_tensor, py::arg("tensor"), py::arg("offset"), py::arg("callback") = py::none(), py::arg("pinned") = py::none())
         .def("synchronize", &AsyncFileWriter::synchronize)
         .def("sync_h2d", &AsyncFileWriter::sync_h2d)
-        .def("register_h2d", &AsyncFileWriter::register_h2d, py::arg("num_tensors"));
+        .def("register_h2d", &AsyncFileWriter::register_h2d, py::arg("num_tensors"))
+        .def("register_tasks", &AsyncFileWriter::register_tasks, py::arg("num_tasks"));
 }

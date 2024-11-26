@@ -69,3 +69,6 @@ class AsyncFileWriter:
     def __del__(self) -> None:
         self.synchronize()
         os.close(self.fd)
+
+    def register_tasks(self, num_tasks: int) -> None:
+        self.io.register_tasks(num_tasks)

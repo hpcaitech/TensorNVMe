@@ -41,25 +41,32 @@ void probe_asyncio(const std::string &backend)
     try
     {
         std::unique_ptr<AsyncIO> aio;
-        if (backend == "uring") {
+        if (backend == "uring")
+        {
 #ifndef DISABLE_URING
             aio.reset(new UringAsyncIO(2));
 #else
             throw std::runtime_error("backend uring is not installed\n");
 #endif
-        } else if (backend == "aio") {
+        }
+        else if (backend == "aio")
+        {
 #ifndef DISABLE_AIO
             aio.reset(new AIOAsyncIO(2));
 #else
             throw std::runtime_error("backend aio is not installed\n");
 #endif
-        } else if (backend == "pthread") {
+        }
+        else if (backend == "pthread")
+        {
 #ifndef DISABLE_PTHREAD
             aio.reset(new PthreadAsyncIO(2));
 #else
             throw std::runtime_error("backend pthread is not installed\n");
 #endif
-        } else {
+        }
+        else
+        {
             throw std::runtime_error("unknown backend");
         }
 
@@ -119,23 +126,38 @@ bool probe_backend(const std::string &backend)
     }
 }
 
-std::string get_default_backend() {
-    const char* env = getenv("TENSORNVME_BACKEND");
-    if (env == nullptr) {
+std::string get_default_backend()
+{
+    const char *env = getenv("TENSORNVME_BACKEND");
+    if (env == nullptr)
+    {
         return std::string("");
     }
     return std::string(env);
 }
 
-bool get_debug_flag() {
-    const char* env_ = getenv("TENSORNVME_DEBUG");
-    if (env_ == nullptr) {
+bool get_debug_flag()
+{
+    const char *env_ = getenv("TENSORNVME_DEBUG");
+    if (env_ == nullptr)
+    {
         return false;
     }
     std::string env(env_);
     std::transform(env.begin(), env.end(), env.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+                   [](unsigned char c)
+                   { return std::tolower(c); });
     return env == "1" || env == "true";
+}
+
+std::string get_debug_log()
+{
+    const char *env_ = getenv("TENSORNVME_DEBUG_LOG");
+    if (env_ == nullptr)
+    {
+        return std::string("");
+    }
+    return std::string(env_);
 }
 
 AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
@@ -147,17 +169,18 @@ AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
     if (backends.empty())
         throw std::runtime_error("No asyncio backend is installed");
 
-    if (default_backend.size() > 0) {  // priority 1: environ is set
-        if (is_debugging) {
+    if (default_backend.size() > 0)
+    { // priority 1: environ is set
+        if (is_debugging)
+        {
             std::cout << "[backend] backend is overwritten by environ TENSORNVME_BACKEND from " << backend << " to " << default_backend << std::endl;
         }
         backend = default_backend;
-    } else if (backend.size() > 0) {  // priority 2: backend is set
+    }
+    else if (backend.size() > 0)
+    { // priority 2: backend is set
         if (backends.find(backend) == backends.end())
             throw std::runtime_error("Unsupported backend: " + backend);
-    }
-    if (is_debugging) {
-        std::cout << "[backend] using backend: " << backend << std::endl;
     }
 
     if (!probe_backend(backend))

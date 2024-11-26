@@ -15,3 +15,5 @@ std::string get_default_backend();
 bool get_debug_flag();
 
 AsyncIO *create_asyncio(unsigned int n_entries, std::string backend);
+
+std::string get_debug_log();
