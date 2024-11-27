@@ -19,7 +19,7 @@ private:
     void get_event(WaitType wt);
 
 public:
-    AIOAsyncIO(unsigned int n_entries);
+    AIOAsyncIO(unsigned int n_entries, unsigned int n_tasks);
     ~AIOAsyncIO();
 
     void write(int fd, void *buffer, size_t n_bytes, unsigned long long offset, callback_t callback);

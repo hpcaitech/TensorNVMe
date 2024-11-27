@@ -2,7 +2,7 @@
 #include <memory>
 #include "uring.h"
 
-UringAsyncIO::UringAsyncIO(unsigned int n_entries) : n_write_events(0), n_read_events(0), n_entries(n_entries)
+UringAsyncIO::UringAsyncIO(unsigned int n_entries, unsigned int n_tasks) : n_write_events(0), n_read_events(0), n_entries(n_entries)
 {
     io_uring_queue_init(n_entries, &this->ring, 0);
 }
