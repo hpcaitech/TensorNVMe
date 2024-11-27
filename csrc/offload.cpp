@@ -28,7 +28,7 @@ iovec *tensors_to_iovec(const std::vector<at::Tensor> &tensors)
 
 Offloader::Offloader(const std::string &filename, unsigned int n_entries, const std::string &backend) : filename(filename), space_mgr(SpaceManager(0))
 {
-    this->aio = create_asyncio(n_entries, backend);
+    this->aio = create_asyncio(n_entries, backend, 0);
     this->fd = open(filename.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     this->aio->register_file(fd);
 }

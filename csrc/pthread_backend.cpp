@@ -16,8 +16,8 @@ void PthreadAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long l
             auto val = pwrite(fd, buffer, n_bytes, offset);
             if (this->is_debug)
             {
-                auto cur_tasks = this->tasks_in_progress.fetch_sub(1);
-                if (cur_tasks == 1)
+                auto cur_tasks = this->tasks_in_progress.fetch_add(1);
+                if (cur_tasks + 1 == this->total_tasks)
                 {
                     if (this->debug_log.empty())
                     {
@@ -171,8 +171,8 @@ void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long of
             auto val = pwrite(fd, buf, n_bytes, offset);
             if (this->is_debug)
             {
-                auto cur_tasks = this->tasks_in_progress.fetch_sub(1);
-                if (cur_tasks == 1)
+                auto cur_tasks = this->tasks_in_progress.fetch_add(1);
+                if (cur_tasks + 1 == this->total_tasks)
                 {
                     if (this->debug_log.empty())
                     {

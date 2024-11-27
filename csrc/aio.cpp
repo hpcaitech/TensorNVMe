@@ -1,6 +1,6 @@
 #include "aio.h"
 
-AIOAsyncIO::AIOAsyncIO(unsigned int n_entries)
+AIOAsyncIO::AIOAsyncIO(unsigned int n_entries, unsigned int n_tasks)
 {
     // printf("Initializing the io Context\n");
     this->max_nr = n_entries;

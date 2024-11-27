@@ -10,14 +10,14 @@ from tensornvme._C import AsyncFileWriter as AsyncFileWriterC
 
 
 class AsyncFileWriter:
-    def __init__(self, path: str, n_entries: int = 16, backend=None) -> None:
+    def __init__(self, path: str, n_entries: int = 16, backend=None, n_tasks: int = 0) -> None:
         # this still takes ram buffer, which may lead to OOM
         # self.f = open(path, "wb", buffering=0)
         self.fd = os.open(path, os.O_WRONLY | os.O_CREAT, mode=0o664)
         if backend is not None:
-            self.io = AsyncFileWriterC(self.fd, n_entries, backend=backend)
+            self.io = AsyncFileWriterC(self.fd, n_entries, backend=backend, n_tasks=n_tasks)
         else:
-            self.io = AsyncFileWriterC(self.fd, n_entries)
+            self.io = AsyncFileWriterC(self.fd, n_entries, n_tasks=n_tasks)
         self.offset = 0
         # must ensure the data is not garbage collected
         self.buffers = []

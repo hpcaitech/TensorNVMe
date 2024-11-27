@@ -44,7 +44,7 @@ void probe_asyncio(const std::string &backend)
         if (backend == "uring")
         {
 #ifndef DISABLE_URING
-            aio.reset(new UringAsyncIO(2));
+            aio.reset(new UringAsyncIO(2, 0));
 #else
             throw std::runtime_error("backend uring is not installed\n");
 #endif
@@ -52,7 +52,7 @@ void probe_asyncio(const std::string &backend)
         else if (backend == "aio")
         {
 #ifndef DISABLE_AIO
-            aio.reset(new AIOAsyncIO(2));
+            aio.reset(new AIOAsyncIO(2, 0));
 #else
             throw std::runtime_error("backend aio is not installed\n");
 #endif
@@ -60,7 +60,7 @@ void probe_asyncio(const std::string &backend)
         else if (backend == "pthread")
         {
 #ifndef DISABLE_PTHREAD
-            aio.reset(new PthreadAsyncIO(2));
+            aio.reset(new PthreadAsyncIO(2, 0));
 #else
             throw std::runtime_error("backend pthread is not installed\n");
 #endif
@@ -160,7 +160,7 @@ std::string get_debug_log()
     return std::string(env_);
 }
 
-AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
+AsyncIO *create_asyncio(unsigned int n_entries, std::string backend, unsigned int n_tasks)
 {
     std::unordered_set<std::string> backends = get_backends();
     std::string default_backend = get_default_backend();
@@ -188,15 +188,15 @@ AsyncIO *create_asyncio(unsigned int n_entries, std::string backend)
 
 #ifndef DISABLE_URING
     if (backend == "uring")
-        return new UringAsyncIO(n_entries);
+        return new UringAsyncIO(n_entries, n_tasks);
 #endif
 #ifndef DISABLE_AIO
     if (backend == "aio")
-        return new AIOAsyncIO(n_entries);
+        return new AIOAsyncIO(n_entries, n_tasks);
 #endif
 #ifndef DISABLE_PTHREAD
     if (backend == "pthread")
-        return new PthreadAsyncIO(n_entries);
+        return new PthreadAsyncIO(n_entries, n_tasks);
 #endif
     throw std::runtime_error("Unsupported backend: " + backend);
 }
