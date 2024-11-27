@@ -26,6 +26,7 @@ class PthreadAsyncIO : public AsyncIO
 private:
     BS::thread_pool pool;
     std::atomic<unsigned int> h2d_in_progress;
+    unsigned int total_h2d;
     std::condition_variable cv;
     std::mutex mtx;
     std::deque<std::tuple<std::future<ssize_t>, callback_t>> write_fut;
@@ -38,7 +39,7 @@ private:
 
 public:
     PthreadAsyncIO(unsigned int n_entries, unsigned int n_tasks)
-        : pool(n_entries), h2d_in_progress(0), tasks_in_progress(0), total_tasks(n_tasks) {}
+        : pool(n_entries), h2d_in_progress(0), tasks_in_progress(0), total_tasks(n_tasks), total_h2d(0) {}
 
     ~PthreadAsyncIO() {}
 

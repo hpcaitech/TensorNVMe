@@ -117,14 +117,14 @@ void PthreadAsyncIO::register_file(int fd) {}
 
 void PthreadAsyncIO::register_h2d(unsigned int num_tensors)
 {
-    this->h2d_in_progress.store(num_tensors); // register tensors to write for this run
+    this->total_h2d = num_tensors;
 }
 
 void PthreadAsyncIO::sync_h2d()
 {
     std::unique_lock<std::mutex> lock(this->mtx);
     this->cv.wait(lock, [this]
-                  { return this->h2d_in_progress == 0; }); // block until all in-progress h2d are completed
+                  { return this->h2d_in_progress == this->total_h2d; }); // block until all in-progress h2d are completed
 }
 
 void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned)
@@ -132,8 +132,8 @@ void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long of
     auto stream = c10::cuda::getCurrentCUDAStream();
     if (!t.is_cuda())
     {
-        this->h2d_in_progress.fetch_sub(1); // already moved to cpu
-        if (this->h2d_in_progress.load() == 0)
+        auto cur_h2d = this->h2d_in_progress.fetch_add(1); // already moved to cpu
+        if (cur_h2d + 1 == this->total_h2d)
         { // notify when all h2d are completed and safe to optimizer.step()
             std::lock_guard<std::mutex> lock(this->mtx);
             cv.notify_one();
@@ -155,8 +155,8 @@ void PthreadAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long of
                 {
                     cpu_tensor = t.to(t.options().device(c10::DeviceType::CPU), /*non_blocking*/ false, /*copy*/ false); // modified from torch::Tensor::cpu()
                 }
-                this->h2d_in_progress.fetch_sub(1);
-                if (this->h2d_in_progress.load() == 0)
+                auto cur_h2d = this->h2d_in_progress.fetch_add(1);
+                if (cur_h2d + 1 == this->total_h2d)
                 { // notify when all h2d are completed and safe to optimizer.step()
                     std::lock_guard<std::mutex> lock(this->mtx);
                     cv.notify_one();
