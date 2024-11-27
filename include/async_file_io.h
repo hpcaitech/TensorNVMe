@@ -23,6 +23,7 @@ public:
     void synchronize();
     void register_h2d(unsigned int num_tensors);
     void sync_h2d();
+    void register_tasks(unsigned int num_tasks);
     ~AsyncFileWriter();
 
 private:

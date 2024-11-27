@@ -23,7 +23,7 @@ void AIOAsyncIO::get_event(WaitType wt)
     std::unique_ptr<io_event> events(new io_event[this->max_nr]);
     int num_events;
 
-    if(wt == WAIT)
+    if (wt == WAIT)
         num_events = io_getevents(io_ctx, this->min_nr, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
     else
         num_events = io_getevents(io_ctx, 0, this->max_nr, events.get(), &(this->timeout)); /* 获得异步I/O event个数 */
@@ -48,7 +48,7 @@ void AIOAsyncIO::write(int fd, void *buffer, size_t n_bytes, unsigned long long 
 {
     struct iocb iocb
     {
-    }; //建立一个异步I/O需求
+    }; // 建立一个异步I/O需求
     struct iocb *iocbs = &iocb;
     auto *data = new IOData(WRITE, callback);
 
@@ -64,7 +64,7 @@ void AIOAsyncIO::read(int fd, void *buffer, size_t n_bytes, unsigned long long o
 {
     struct iocb iocb
     {
-    }; //建立一个异步I/O需求
+    }; // 建立一个异步I/O需求
     struct iocb *iocbs = &iocb;
     auto *data = new IOData(READ, callback);
 
@@ -98,7 +98,7 @@ void AIOAsyncIO::writev(int fd, const iovec *iov, unsigned int iovcnt, unsigned 
 {
     struct iocb iocb
     {
-    }; //建立一个异步I/O需求
+    }; // 建立一个异步I/O需求
     struct iocb *iocbs = &iocb;
     auto *data = new IOData(WRITE, callback, iov);
 
@@ -114,7 +114,7 @@ void AIOAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned l
 {
     struct iocb iocb
     {
-    }; //建立一个异步I/O需求
+    }; // 建立一个异步I/O需求
     struct iocb *iocbs = &iocb;
     auto *data = new IOData(READ, callback, iov);
 
@@ -126,12 +126,17 @@ void AIOAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned l
     this->n_read_events++;
 }
 
-void AIOAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
-    if (t.is_cuda()) {
-        if (pinned.has_value()) {
+void AIOAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned)
+{
+    if (t.is_cuda())
+    {
+        if (pinned.has_value())
+        {
             pinned.value().copy_(t);
             t = pinned.value();
-        } else {
+        }
+        else
+        {
             t = t.to(torch::kCPU);
         }
     }
@@ -142,3 +147,4 @@ void AIOAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset
 
 void AIOAsyncIO::register_h2d(unsigned int num_tensors) {}
 void AIOAsyncIO::sync_h2d() {}
+void AIOAsyncIO::register_tasks(unsigned int num_tasks) {}

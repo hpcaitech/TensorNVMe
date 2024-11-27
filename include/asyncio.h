@@ -46,6 +46,7 @@ public:
     virtual void sync_write_events() = 0;
     virtual void sync_read_events() = 0;
     virtual void register_h2d(unsigned int num_tensors) = 0;
+    virtual void register_tasks(unsigned int num_tasks) = 0;
     virtual void sync_h2d() = 0;
     virtual void synchronize() = 0;
 

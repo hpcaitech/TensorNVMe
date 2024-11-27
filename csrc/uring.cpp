@@ -21,12 +21,15 @@ UringAsyncIO::~UringAsyncIO()
 void UringAsyncIO::get_event(WaitType wt)
 {
     io_uring_cqe *cqe;
-    if (wt == WAIT){
+    if (wt == WAIT)
+    {
         io_uring_wait_cqe(&this->ring, &cqe);
     }
-    else{
+    else
+    {
         int ret = io_uring_peek_cqe(&this->ring, &cqe);
-        if (ret != 0) return;
+        if (ret != 0)
+            return;
     }
 
     std::unique_ptr<IOData> data(static_cast<IOData *>(io_uring_cqe_get_data(cqe)));
@@ -99,12 +102,17 @@ void UringAsyncIO::readv(int fd, const iovec *iov, unsigned int iovcnt, unsigned
     this->n_read_events++;
 }
 
-void UringAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned) {
-    if (t.is_cuda()) {
-        if (pinned.has_value()) {
+void UringAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offset, callback_t callback, std::optional<torch::Tensor> pinned)
+{
+    if (t.is_cuda())
+    {
+        if (pinned.has_value())
+        {
             pinned.value().copy_(t);
             t = pinned.value();
-        } else {
+        }
+        else
+        {
             t = t.to(torch::kCPU);
         }
     }
@@ -115,3 +123,4 @@ void UringAsyncIO::write_tensor(int fd, torch::Tensor t, unsigned long long offs
 
 void UringAsyncIO::register_h2d(unsigned int num_tensors) {}
 void UringAsyncIO::sync_h2d() {}
+void UringAsyncIO::register_tasks(unsigned int num_tasks) {}
